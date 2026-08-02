@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Binance Account Monitor</title>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    padding: 20px;
+}
+
+button {
+    padding: 12px;
+    margin: 5px;
+    cursor: pointer;
+}
+
+.card {
+    border: 1px solid #ddd;
+    padding: 15px;
+    margin-top: 15px;
+    border-radius: 8px;
+}
+
+table {
+    width:100%;
+    border-collapse: collapse;
+}
+
+td,th {
+    border:1px solid #ddd;
+    padding:8px;
+}
+</style>
+
+</head>
+
+<body>
+
+<h1>Binance Account Dashboard</h1>
+
+<button onclick="createCollections()">
+Create Firebase Collections
+</button>
+
+
+<div class="card">
+<h2>Balances</h2>
+<table id="balances">
+<tr>
+<th>Coin</th>
+<th>Amount</th>
+</tr>
+</table>
+</div>
+
+
+<div class="card">
+<h2>Transaction History</h2>
+
+<table id="history">
+
+<tr>
+<th>Type</th>
+<th>Coin</th>
+<th>Amount</th>
+<th>Hash</th>
+<th>Status</th>
+</tr>
+
+</table>
+
+</div>
+
+
+<script type="module">
+
+import { initializeApp } from "firebase/app";
+
+import { 
+getFirestore,
+collection,
+addDoc,
+getDocs
+} from "firebase/firestore";
+
+
+const firebaseConfig = {
+
+apiKey: "AIzaSyDDY0Qk5Og1eEslvUXo8yQiOVA_PQ3qa5s",
+
+authDomain: "p2p-network-d08c5.firebaseapp.com",
+
+projectId: "p2p-network-d08c5",
+
+storageBucket: "p2p-network-d08c5.firebasestorage.app",
+
+messagingSenderId: "278654560881",
+
+appId: "1:278654560881:web:f7bfb4a06fd5e969cc89d0",
+
+measurementId: "G-DECS8Q4BG8"
+
+};
+
+
+const app = initializeApp(firebaseConfig);
+
+const db = getFirestore(app);
+
+
+
+// Create sample collections
+
+window.createCollections = async function(){
+
+await addDoc(collection(db,"binanceBalances"),{
+
+coin:"USDT",
+
+amount:0,
+
+createdAt:new Date()
+
+});
+
+
+await addDoc(collection(db,"binanceTransactions"),{
+
+type:"deposit",
+
+coin:"USDT",
+
+amount:0,
+
+hash:"",
+
+status:"pending",
+
+createdAt:new Date()
+
+});
+
+
+alert("Collections created successfully");
+
+}
+
+
+
+// Display balances
+
+async function loadBalances(){
+
+const querySnapshot =
+await getDocs(collection(db,"binanceBalances"));
+
+
+let table =
+document.getElementById("balances");
+
+
+querySnapshot.forEach((doc)=>{
+
+
+let data=doc.data();
+
+
+table.innerHTML += `
+
+<tr>
+
+<td>${data.coin}</td>
+
+<td>${data.amount}</td>
+
+</tr>
+
+`;
+
+});
+
+
+}
+
+
+
+// Display history
+
+async function loadHistory(){
+
+
+const querySnapshot =
+await getDocs(collection(db,"binanceTransactions"));
+
+
+let table =
+document.getElementById("history");
+
+
+querySnapshot.forEach((doc)=>{
+
+
+let data=doc.data();
+
+
+table.innerHTML += `
+
+<tr>
+
+<td>${data.type}</td>
+
+<td>${data.coin}</td>
+
+<td>${data.amount}</td>
+
+<td>${data.hash}</td>
+
+<td>${data.status}</td>
+
+</tr>
+
+`;
+
+});
+
+
+}
+
+
+loadBalances();
+
+loadHistory();
+
+
+</script>
+
+
+</body>
+</html>
