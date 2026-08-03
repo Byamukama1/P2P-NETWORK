@@ -1,31 +1,43 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
     <title>Create Account · GreenLeaf P2P</title>
     <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
     <!-- Firebase SDKs -->
     <script type="module">
+        // -------------------------------------------------------------
+        // 1. FIREBASE INIT with CORRECT config
+        // -------------------------------------------------------------
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js";
 
+        // Your web app's Firebase configuration (EXACT copy)
         const firebaseConfig = {
-            apiKey: "AIzaSyDDY0Kq5Og1eEslvUXo8yQiOVA_PQ3qa5s",
+            apiKey: "AIzaSyDDY0Qk5Og1eEslvUXo8yQiOVA_PQ3qa5s",
             authDomain: "p2p-network-d08c5.firebaseapp.com",
             projectId: "p2p-network-d08c5",
             storageBucket: "p2p-network-d08c5.firebasestorage.app",
             messagingSenderId: "278654560881",
             appId: "1:278654560881:web:f7bfb4a06fd5e969cc89d0",
-            measurementId: "G-DECS8Q4BG"
+            measurementId: "G-DECS8Q4BG8"
         };
+
+        // Initialize Firebase
         const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // --- Country list with currencies ---
+        console.log("✅ Firebase initialized with correct API key");
+
+        // -------------------------------------------------------------
+        // 2. COUNTRY LIST with currencies
+        // -------------------------------------------------------------
         const countries = [
             { name: "Afghanistan", code: "AF", currency: "AFN" },
             { name: "Albania", code: "AL", currency: "ALL" },
@@ -212,7 +224,9 @@
             { name: "Zimbabwe", code: "ZW", currency: "ZWL" }
         ];
 
-        // Populate country dropdown with search
+        // -------------------------------------------------------------
+        // 3. POPULATE COUNTRY DROPDOWN
+        // -------------------------------------------------------------
         const countrySelect = document.getElementById('country');
         const countrySearch = document.getElementById('countrySearch');
         let countryOptions = [];
@@ -240,44 +254,70 @@
         countrySelect.addEventListener('change', function() {
             const selected = this.options[this.selectedIndex];
             const currency = selected.dataset.currency || 'USD';
-            document.getElementById('currencyDisplay').textContent = `Currency: ${currency}`;
+            document.getElementById('currencyDisplay').textContent = `💱 Currency: ${currency}`;
         });
 
-        // Toggle password visibility
+        // -------------------------------------------------------------
+        // 4. TOGGLE PASSWORD VISIBILITY
+        // -------------------------------------------------------------
         window.togglePassword = function(id) {
             const input = document.getElementById(id);
             input.type = input.type === 'password' ? 'text' : 'password';
         };
 
-        // Register form submit
+        // -------------------------------------------------------------
+        // 5. REGISTER FORM SUBMIT
+        // -------------------------------------------------------------
         document.getElementById('registerForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            const username = document.getElementById('username').value;
-            const email = document.getElementById('email').value;
+            const username = document.getElementById('username').value.trim();
+            const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
             const confirmPassword = document.getElementById('confirmPassword').value;
-            const wallet = document.getElementById('wallet').value;
+            const wallet = document.getElementById('wallet').value.trim();
             const network = document.getElementById('network').value;
             const countryCode = document.getElementById('country').value;
             const selectedCountry = countrySelect.options[countrySelect.selectedIndex];
             const countryName = selectedCountry.dataset.name || '';
             const currency = selectedCountry.dataset.currency || 'USD';
 
+            // Validation
             if (password !== confirmPassword) {
-                alert('Passwords do not match');
+                alert('❌ Passwords do not match');
+                return;
+            }
+
+            if (password.length < 6) {
+                alert('❌ Password must be at least 6 characters');
                 return;
             }
 
             if (!countryCode) {
-                alert('Please select your country');
+                alert('❌ Please select your country');
                 return;
             }
 
+            if (!wallet) {
+                alert('❌ Please enter your USDT wallet address');
+                return;
+            }
+
+            if (!network) {
+                alert('❌ Please select your USDT network');
+                return;
+            }
+
+            const submitBtn = document.querySelector('#registerForm button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating account...';
+
             try {
+                // Create user with email and password
                 const userCredential = await createUserWithEmailAndPassword(auth, email, password);
                 const uid = userCredential.user.uid;
 
+                // Save user data to Firestore
                 await setDoc(doc(db, 'users', uid), {
                     username: username,
                     email: email,
@@ -286,16 +326,26 @@
                     countryCode: countryCode,
                     countryName: countryName,
                     currency: currency,
-                    uninvestedBalance: 0,      // New field: uninvested balance in dollars
-                    investedAmount: 0,         // New field: invested amount in dollars
-                    totalBalance: 0,           // Optional: total = uninvested + invested
+                    uninvestedBalance: 0,
+                    investedAmount: 0,
+                    totalBalance: 0,
                     createdAt: serverTimestamp()
                 });
 
                 alert('✅ Account created successfully!');
                 window.location.href = 'login.html';
             } catch (error) {
-                alert('❌ ' + error.message);
+                let errorMsg = error.message;
+                if (errorMsg.includes('api-key-not-valid')) {
+                    errorMsg = 'Invalid API key. Please contact support.';
+                } else if (errorMsg.includes('email-already-in-use')) {
+                    errorMsg = 'This email is already registered. Please login.';
+                } else if (errorMsg.includes('weak-password')) {
+                    errorMsg = 'Password is too weak. Use at least 6 characters.';
+                }
+                alert('❌ ' + errorMsg);
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-user-plus"></i> Register Now';
             }
         });
     </script>
@@ -487,13 +537,18 @@
             margin-top: 6px;
         }
 
-        .btn-primary:hover {
+        .btn-primary:hover:not(:disabled) {
             background: #2d6a2d;
             transform: scale(1.01);
         }
 
-        .btn-primary:active {
+        .btn-primary:active:not(:disabled) {
             transform: scale(0.97);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
         }
 
         .btn-secondary {
@@ -615,6 +670,25 @@
             transform: scale(1.02);
         }
 
+        .home-link {
+            display: block;
+            text-align: center;
+            margin-top: 16px;
+            font-size: 0.85rem;
+            color: #4a754a;
+            text-decoration: none;
+            transition: 0.2s;
+        }
+
+        .home-link:hover {
+            color: #1d4a1d;
+            text-decoration: underline;
+        }
+
+        .home-link i {
+            margin-right: 6px;
+        }
+
         @media (max-width: 460px) {
             .container {
                 padding: 20px 16px 30px 16px;
@@ -636,7 +710,7 @@
 
         <!-- Brand Header -->
         <div class="brand-header">
-            <img src="https://res.cloudinary.com/dp81zzxlh/image/upload/v1785751860/AM-CBD-Drops-Hybrid-Oil-30ml_bottle-syringe_h9g361.png" alt="AM CBD logo">
+            <img src="https://res.cloudinary.com/dp81zzxlh/image/upload/v1785751860/AM-CBD-Drops-Hybrid-Oil-30ml_bottle-syringe_h9g361.png" alt="AM CBD logo" />
             <h1>Create Account <small>GreenLeaf P2P Network</small></h1>
         </div>
 
@@ -650,25 +724,25 @@
         <form id="registerForm">
 
             <label>Username (Account Name)</label>
-            <input id="username" required placeholder="e.g. GreenLeaf_John" autocomplete="username">
+            <input id="username" required placeholder="e.g. GreenLeaf_John" autocomplete="username" />
 
             <label>Email Address</label>
-            <input id="email" type="email" required placeholder="you@gmail.com" autocomplete="email">
+            <input id="email" type="email" required placeholder="you@gmail.com" autocomplete="email" />
 
             <label>Password</label>
             <div class="password-box">
-                <input id="password" type="password" required placeholder="Create a strong password" autocomplete="new-password">
+                <input id="password" type="password" required placeholder="Create a strong password (min 6 chars)" autocomplete="new-password" />
                 <span class="eye" onclick="togglePassword('password')">👁️</span>
             </div>
 
             <label>Confirm Password</label>
             <div class="password-box">
-                <input id="confirmPassword" type="password" required placeholder="Confirm your password" autocomplete="new-password">
+                <input id="confirmPassword" type="password" required placeholder="Confirm your password" autocomplete="new-password" />
                 <span class="eye" onclick="togglePassword('confirmPassword')">👁️</span>
             </div>
 
             <label>Your USDT Wallet Address</label>
-            <input id="wallet" required placeholder="Paste USDT address from Binance or wallet app" autocomplete="off">
+            <input id="wallet" required placeholder="Paste USDT address from Binance or wallet app" autocomplete="off" />
 
             <label>Select USDT Network</label>
             <select id="network" required>
@@ -681,12 +755,12 @@
             <label>Select Your Country</label>
             <div class="search-box">
                 <i class="fas fa-search"></i>
-                <input id="countrySearch" type="text" placeholder="Search country..." autocomplete="off">
+                <input id="countrySearch" type="text" placeholder="Search country..." autocomplete="off" />
             </div>
             <select id="country" required style="margin-top: 6px;">
                 <option value="">-- Select country --</option>
             </select>
-            <div class="currency-hint" id="currencyDisplay">Currency: USD</div>
+            <div class="currency-hint" id="currencyDisplay">💱 Currency: USD</div>
 
             <!-- Security Warning -->
             <div class="warning-box">
@@ -717,6 +791,10 @@
                 <i class="fab fa-google-play"></i> Download Binance App
             </a>
         </div>
+
+        <a href="index.html" class="home-link">
+            <i class="fas fa-home"></i> Return to Home Page
+        </a>
 
         <!-- Video Guides -->
         <div class="video-section">
