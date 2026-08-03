@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Create Account - P2P Network</title>
+
+<style>
+
+body {
+    font-family: Arial, sans-serif;
+    background:#f4f7fb;
+    margin:0;
+    padding:20px;
+}
+
+.container {
+    max-width:500px;
+    margin:auto;
+    background:white;
+    padding:25px;
+    border-radius:15px;
+    box-shadow:0 4px 15px #ccc;
+}
+
+h1 {
+    text-align:center;
+    color:#1a73e8;
+}
+
+label {
+    font-weight:bold;
+    display:block;
+    margin-top:15px;
+}
+
+input, select {
+    width:100%;
+    padding:12px;
+    margin-top:6px;
+    border-radius:8px;
+    border:1px solid #ccc;
+    box-sizing:border-box;
+}
+
+
+.password-box {
+    display:flex;
+    align-items:center;
+}
+
+.password-box input {
+    flex:1;
+}
+
+
+.eye {
+    margin-left:-35px;
+    cursor:pointer;
+    font-size:20px;
+}
+
+
+button {
+    width:100%;
+    padding:14px;
+    margin-top:20px;
+    border:none;
+    border-radius:10px;
+    background:#1a73e8;
+    color:white;
+    font-size:16px;
+}
+
+
+.login {
+    background:#28a745;
+}
+
+
+.warning {
+    background:#fff3cd;
+    padding:15px;
+    border-radius:10px;
+    margin-top:15px;
+    color:#856404;
+}
+
+
+.step {
+    background:#eef5ff;
+    padding:12px;
+    margin-top:10px;
+    border-radius:10px;
+}
+
+
+iframe {
+    width:100%;
+    height:250px;
+    border-radius:12px;
+    margin-top:15px;
+}
+
+
+</style>
+
+</head>
+
+
+<body>
+
+
+<div class="container">
+
+
+<h1>Create Account</h1>
+
+
+<div class="step">
+<b>Step 1:</b> Create your account.
+<br>
+Your username identifies your account.
+<br>
+Your email receives important notifications.
+</div>
+
+
+
+<form id="registerForm">
+
+
+<label>Username (Account Name)</label>
+
+<input 
+id="username"
+required
+placeholder="Example: Mentor123">
+
+
+
+<label>Email Address</label>
+
+<input 
+id="email"
+type="email"
+required
+placeholder="you@example.com">
+
+
+
+<label>Password</label>
+
+<div class="password-box">
+
+<input 
+id="password"
+type="password"
+required
+placeholder="Create password">
+
+<span class="eye" onclick="togglePassword('password')">
+👁️
+</span>
+
+</div>
+
+
+
+
+<label>Confirm Password</label>
+
+<div class="password-box">
+
+<input 
+id="confirmPassword"
+type="password"
+required
+placeholder="Confirm password">
+
+<span class="eye" onclick="togglePassword('confirmPassword')">
+👁️
+</span>
+
+</div>
+
+
+
+
+
+<label>Your USDT Wallet Address</label>
+
+<input 
+id="wallet"
+required
+placeholder="Paste wallet address from Binance or wallet app">
+
+
+
+
+
+<label>Select USDT Network</label>
+
+
+<select id="network" required>
+
+<option value="">
+Choose network
+</option>
+
+
+<option value="TRC20">
+USDT TRC20 (TRON Network)
+</option>
+
+
+<option value="BEP20">
+USDT BEP20 (BNB Smart Chain)
+</option>
+
+
+</select>
+
+
+
+
+
+<div class="warning">
+
+⚠️ Important Security Guide
+
+<br><br>
+
+1. Open Binance or your wallet app.
+
+<br><br>
+
+2. Select USDT → Receive/Deposit.
+
+<br><br>
+
+3. Copy your wallet address.
+
+<br><br>
+
+4. Paste it here. Do not type manually.
+
+<br><br>
+
+5. Select the same network.
+
+<br><br>
+
+TRC20 address must use TRC20.
+
+<br>
+
+BEP20 address must use BNB Smart Chain.
+
+<br><br>
+
+Wrong network selection can permanently lose USDT.
+
+</div>
+
+
+
+
+<button type="submit">
+Create Account
+</button>
+
+
+
+</form>
+
+
+
+
+
+<button class="login" onclick="location.href='login.html'">
+
+Already have an account? Login
+
+</button>
+
+
+
+
+
+
+<h2>Wallet Setup Guides</h2>
+
+
+<div class="step">
+
+Watch the guides below while completing registration.
+
+</div>
+
+
+
+
+<h3>
+1. How to create Binance account
+</h3>
+
+
+<iframe
+src="https://www.youtube.com/embed/RQDDR3bzz-4">
+</iframe>
+
+
+
+
+
+<h3>
+2. How to copy USDT TRC20 wallet address from Binance
+</h3>
+
+
+<iframe
+src="https://www.youtube.com/embed/Fm29nBzaqxU">
+</iframe>
+
+
+
+
+
+</div>
+
+
+
+
+
+
+<script type="module">
+
+
+import { initializeApp } 
+from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+
+
+import { 
+getAuth,
+createUserWithEmailAndPassword
+} 
+from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+
+
+import {
+getFirestore,
+doc,
+setDoc,
+serverTimestamp
+}
+from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+
+
+
+
+const firebaseConfig = {
+
+apiKey: "AIzaSyDDY0Kq5Og1eEslvUXo8yQiOVA_PQ3qa5s",
+
+authDomain:"p2p-network-d08c5.firebaseapp.com",
+
+projectId:"p2p-network-d08c5",
+
+storageBucket:"p2p-network-d08c5.firebasestorage.app",
+
+messagingSenderId:"278654560881",
+
+appId:"1:278654560881:web:f7bfb4a06fd5e969cc89d0",
+
+measurementId:"G-DECS8Q4BG"
+
+};
+
+
+
+
+const app = initializeApp(firebaseConfig);
+
+const auth = getAuth(app);
+
+const db = getFirestore(app);
+
+
+
+
+
+
+window.togglePassword=function(id){
+
+let input=document.getElementById(id);
+
+
+if(input.type==="password"){
+
+input.type="text";
+
+}else{
+
+input.type="password";
+
+}
+
+}
+
+
+
+
+
+document
+.getElementById("registerForm")
+.addEventListener("submit", async(e)=>{
+
+
+e.preventDefault();
+
+
+
+let username=
+document.getElementById("username").value;
+
+
+let email=
+document.getElementById("email").value;
+
+
+let password=
+document.getElementById("password").value;
+
+
+let confirmPassword=
+document.getElementById("confirmPassword").value;
+
+
+let wallet=
+document.getElementById("wallet").value;
+
+
+let network=
+document.getElementById("network").value;
+
+
+
+
+if(password !== confirmPassword){
+
+alert("Passwords do not match");
+
+return;
+
+}
+
+
+
+
+
+try{
+
+
+const userCredential=
+await createUserWithEmailAndPassword(
+auth,
+email,
+password
+);
+
+
+
+const uid=userCredential.user.uid;
+
+
+
+
+
+await setDoc(
+doc(db,"users",uid),
+{
+
+
+username:username,
+
+email:email,
+
+walletAddress:wallet,
+
+network:network,
+
+createdAt:serverTimestamp()
+
+
+});
+
+
+
+
+
+alert("Account created successfully!");
+
+window.location.href="login.html";
+
+
+
+}catch(error){
+
+alert(error.message);
+
+}
+
+
+
+});
+
+
+
+</script>
+
+
+
+</body>
+
+</html>
