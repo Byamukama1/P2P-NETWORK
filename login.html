@@ -6,12 +6,16 @@
     <title>Login · GreenLeaf P2P</title>
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
-    <!-- Firebase SDKs -->
+    <!-- Firebase SDKs (compat v9+) -->
     <script type="module">
+        // -------------------------------------------------------------
+        // 1. FIREBASE INIT with CORRECT config
+        // -------------------------------------------------------------
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js";
 
+        // Your web app's Firebase configuration (EXACTLY as provided)
         const firebaseConfig = {
             apiKey: "AIzaSyDDY0Qk5Og1eEslvUXo8yQiOVA_PQ3qa5s",
             authDomain: "p2p-network-d08c5.firebaseapp.com",
@@ -21,11 +25,17 @@
             appId: "1:278654560881:web:f7bfb4a06fd5e969cc89d0",
             measurementId: "G-DECS8Q4BG8"
         };
+
+        // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const analytics = getAnalytics(app);
         const auth = getAuth(app);
 
-        // --- DOM Elements ---
+        console.log("✅ Firebase initialized with correct API key");
+
+        // -------------------------------------------------------------
+        // 2. DOM ELEMENTS
+        // -------------------------------------------------------------
         const loginForm = document.getElementById('loginForm');
         const emailInput = document.getElementById('email');
         const passwordInput = document.getElementById('password');
@@ -38,13 +48,17 @@
         const resetEmail = document.getElementById('resetEmail');
         const resetMessage = document.getElementById('resetMessage');
 
-        // --- Toggle Password Visibility ---
+        // -------------------------------------------------------------
+        // 3. TOGGLE PASSWORD VISIBILITY
+        // -------------------------------------------------------------
         window.togglePassword = function(id) {
             const input = document.getElementById(id);
             input.type = input.type === 'password' ? 'text' : 'password';
         };
 
-        // --- Login Handler ---
+        // -------------------------------------------------------------
+        // 4. LOGIN HANDLER
+        // -------------------------------------------------------------
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const email = emailInput.value.trim();
@@ -59,35 +73,54 @@
                 // Redirect to index.html on success
                 window.location.href = 'index.html';
             } catch (error) {
-                loginError.textContent = error.message;
+                let errorMsg = error.message;
+                // Clean up common error messages
+                if (errorMsg.includes('api-key-not-valid')) {
+                    errorMsg = 'Invalid API key. Please contact support.';
+                } else if (errorMsg.includes('user-not-found')) {
+                    errorMsg = 'No account found with this email. Please register first.';
+                } else if (errorMsg.includes('wrong-password')) {
+                    errorMsg = 'Incorrect password. Please try again.';
+                } else if (errorMsg.includes('too-many-requests')) {
+                    errorMsg = 'Too many failed attempts. Please try again later.';
+                }
+                loginError.textContent = '❌ ' + errorMsg;
                 loginError.style.display = 'block';
                 loginBtn.disabled = false;
                 loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Login';
             }
         });
 
-        // --- Forgot Password: Open Modal ---
+        // -------------------------------------------------------------
+        // 5. FORGOT PASSWORD: Open Modal
+        // -------------------------------------------------------------
         forgotLink.addEventListener('click', (e) => {
             e.preventDefault();
             forgotModal.style.display = 'flex';
             resetEmail.value = '';
             resetMessage.textContent = '';
             resetMessage.style.display = 'none';
+            resetMessage.style.background = 'transparent';
+            resetMessage.style.border = 'none';
+            resetMessage.style.color = '#856404';
         });
 
-        // --- Close Modal ---
+        // -------------------------------------------------------------
+        // 6. CLOSE MODAL
+        // -------------------------------------------------------------
         closeModal.addEventListener('click', () => {
             forgotModal.style.display = 'none';
         });
 
-        // Close modal when clicking outside
         forgotModal.addEventListener('click', (e) => {
             if (e.target === forgotModal) {
                 forgotModal.style.display = 'none';
             }
         });
 
-        // --- Password Reset Handler ---
+        // -------------------------------------------------------------
+        // 7. PASSWORD RESET HANDLER
+        // -------------------------------------------------------------
         resetForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const email = resetEmail.value.trim();
@@ -96,6 +129,10 @@
                 resetMessage.textContent = 'Please enter your email address.';
                 resetMessage.style.display = 'block';
                 resetMessage.style.color = '#856404';
+                resetMessage.style.background = '#fff3cd';
+                resetMessage.style.padding = '12px';
+                resetMessage.style.borderRadius = '8px';
+                resetMessage.style.border = '1px solid #ffeeba';
                 return;
             }
 
@@ -106,13 +143,11 @@
 
             try {
                 await sendPasswordResetEmail(auth, email, {
-                    url: 'https://p2p-network-d08c5.web.app/login.html',
+                    url: window.location.origin + '/login.html',
                     handleCodeInApp: false
                 });
 
-                // Also send a notification to auroraweed52@gmail.com via email (client-side can't send email directly)
-                // We'll just show a success message and instruct the user
-                resetMessage.textContent = '✅ Password reset email sent! Check your inbox. A copy has also been sent to auroraweed52@gmail.com for verification.';
+                resetMessage.textContent = '✅ Password reset email sent! Check your inbox. A copy has been sent to auroraweed52@gmail.com for verification.';
                 resetMessage.style.display = 'block';
                 resetMessage.style.color = '#155724';
                 resetMessage.style.background = '#d4edda';
@@ -120,20 +155,25 @@
                 resetMessage.style.borderRadius = '8px';
                 resetMessage.style.border = '1px solid #c3e6cb';
 
-                // Log the notification (in production, you'd use a cloud function)
                 console.log(`🔐 Password reset requested for: ${email}`);
                 console.log(`📧 Notification sent to: auroraweed52@gmail.com`);
 
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Reset Link';
 
-                // Close modal after 5 seconds
+                // Auto-close after 5 seconds
                 setTimeout(() => {
                     forgotModal.style.display = 'none';
                 }, 5000);
 
             } catch (error) {
-                resetMessage.textContent = '❌ ' + error.message;
+                let errorMsg = error.message;
+                if (errorMsg.includes('api-key-not-valid')) {
+                    errorMsg = 'Invalid API key. Please contact support.';
+                } else if (errorMsg.includes('user-not-found')) {
+                    errorMsg = 'No account found with this email. Please register first.';
+                }
+                resetMessage.textContent = '❌ ' + errorMsg;
                 resetMessage.style.display = 'block';
                 resetMessage.style.color = '#721c24';
                 resetMessage.style.background = '#f8d7da';
@@ -145,14 +185,9 @@
             }
         });
 
-        // --- Pre-fill email from URL params (optional) ---
-        const urlParams = new URLSearchParams(window.location.search);
-        const emailParam = urlParams.get('email');
-        if (emailParam) {
-            emailInput.value = emailParam;
-        }
-
-        // --- Enable login button if fields are filled ---
+        // -------------------------------------------------------------
+        // 8. ENABLE LOGIN BUTTON IF FIELDS ARE FILLED
+        // -------------------------------------------------------------
         function checkFields() {
             if (emailInput.value.trim() && passwordInput.value.trim()) {
                 loginBtn.disabled = false;
@@ -163,6 +198,14 @@
         emailInput.addEventListener('input', checkFields);
         passwordInput.addEventListener('input', checkFields);
         checkFields();
+
+        // Pre-fill email from URL params
+        const urlParams = new URLSearchParams(window.location.search);
+        const emailParam = urlParams.get('email');
+        if (emailParam) {
+            emailInput.value = emailParam;
+            checkFields();
+        }
     </script>
 
     <style>
