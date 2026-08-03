@@ -1,15 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
   <title>GreenLeaf · Invest in Aurora</title>
   <!-- Font Awesome -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
   <!-- Firebase SDKs -->
   <script type="module">
+    // -------------------------------------------------------------
+    // 1. FIREBASE INIT & AUTH CHECK
+    // -------------------------------------------------------------
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
     import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -23,10 +27,25 @@
     };
     const app = initializeApp(firebaseConfig);
     const analytics = getAnalytics(app);
+    const auth = getAuth(app);
     const db = getFirestore(app);
-    console.log("🔥 Firebase initialized");
 
-    // --- Fetch videos from Firestore "updates" collection ---
+    // -------------------------------------------------------------
+    // 2. AUTH GUARD: redirect to login if not authenticated
+    // -------------------------------------------------------------
+    onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        // Not logged in → redirect to login.html
+        window.location.href = "login.html";
+        return;
+      }
+      // User is logged in → show the page (already visible)
+      console.log("✅ User logged in:", user.email);
+    });
+
+    // -------------------------------------------------------------
+    // 3. FETCH FIRESTORE VIDEOS (from "updates" collection)
+    // -------------------------------------------------------------
     async function fetchFirestoreVideos() {
       const container = document.getElementById('firestore-videos');
       if (!container) return;
@@ -37,7 +56,6 @@
           const data = doc.data();
           const title = data.title || 'Aurora Update';
           let link = data.link || '';
-          // extract video ID from various YouTube formats
           const videoId = extractYouTubeId(link);
           if (videoId) {
             html += `
@@ -47,8 +65,8 @@
                 </div>
                 <div class="video-title">${title}</div>
                 <div class="video-embed-wrapper" style="display:none;">
-                  <iframe src="https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0" 
-                          frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+                  <iframe src="https://www.youtube.com/embed/${videoId}?rel=0" 
+                          frameborder="0" allow="encrypted-media" allowfullscreen></iframe>
                 </div>
               </div>
             `;
@@ -56,11 +74,11 @@
         });
         if (html) {
           container.innerHTML = html;
-          // re-run autoplay observer after adding videos
+          // re-run observer after adding videos
           if (window.videoObserver) {
             window.videoObserver.disconnect();
           }
-          setupAutoplayObserver();
+          setupVideoObserver();
         } else {
           container.innerHTML = '<p class="no-videos"><i class="fas fa-video"></i> No updates yet. Check back soon.</p>';
         }
@@ -83,7 +101,9 @@
       return null;
     }
 
-    // --- Static YouTube videos (provided) ---
+    // -------------------------------------------------------------
+    // 4. STATIC VIDEOS (provided list) — NO AUTOPLAY
+    // -------------------------------------------------------------
     const staticVideoIds = [
       'IBW34r4JbWA', '00J4SlIUU4A', 'lTRyjP80n_k', 'RNgh1umo1NM',
       'fUHNFyQe7PI', 'odMBQr_oamk', 'y3iTrTiisAU', 'q2ukQZGN8LQ',
@@ -105,8 +125,8 @@
             </div>
             <div class="video-title">Aurora Spotlight</div>
             <div class="video-embed-wrapper" style="display:none;">
-              <iframe src="https://www.youtube.com/embed/${id}?autoplay=1&rel=0" 
-                      frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+              <iframe src="https://www.youtube.com/embed/${id}?rel=0" 
+                      frameborder="0" allow="encrypted-media" allowfullscreen></iframe>
             </div>
           </div>
         `;
@@ -114,56 +134,89 @@
       container.innerHTML = html;
     }
 
-    // --- Intersection Observer for autoplay ---
-    function setupAutoplayObserver() {
+    // -------------------------------------------------------------
+    // 5. VIDEO OBSERVER (play/pause on scroll) — NO AUTOPLAY
+    //    We use click-to-play instead of autoplay.
+    //    Observer now only shows/hides embed, but does NOT autoplay.
+    // -------------------------------------------------------------
+    function setupVideoObserver() {
       const videoItems = document.querySelectorAll('.video-item');
       const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
           const item = entry.target;
           const wrapper = item.querySelector('.video-embed-wrapper');
           const iframe = wrapper?.querySelector('iframe');
+          const thumb = item.querySelector('.video-thumb');
+
           if (entry.isIntersecting) {
-            // show embed & autoplay
-            if (wrapper) {
-              wrapper.style.display = 'block';
-              if (iframe) {
-                const src = iframe.getAttribute('src');
-                if (src && !src.includes('autoplay=1')) {
-                  iframe.setAttribute('src', src + '&autoplay=1');
-                }
-              }
-            }
-            // hide thumb
-            const thumb = item.querySelector('.video-thumb');
+            // Show embed, hide thumb (but DO NOT autoplay)
+            if (wrapper) wrapper.style.display = 'block';
             if (thumb) thumb.style.display = 'none';
           } else {
-            // pause & hide embed, show thumb
-            if (wrapper) {
-              wrapper.style.display = 'none';
-              if (iframe) {
-                const src = iframe.getAttribute('src');
-                if (src) {
-                  // stop video by resetting src
-                  iframe.setAttribute('src', src.replace('&autoplay=1', '').replace('?autoplay=1', ''));
-                }
+            // Hide embed, show thumb
+            if (wrapper) wrapper.style.display = 'none';
+            if (thumb) thumb.style.display = 'flex';
+            // Pause video by resetting src (no autoplay param)
+            if (iframe) {
+              const src = iframe.getAttribute('src');
+              if (src) {
+                // Remove any autoplay param if present
+                const cleanSrc = src.replace(/[?&]autoplay=1/g, '').replace(/\?$/, '');
+                iframe.setAttribute('src', cleanSrc);
               }
             }
-            const thumb = item.querySelector('.video-thumb');
-            if (thumb) thumb.style.display = 'flex';
           }
         });
-      }, { threshold: 0.6 });
+      }, { threshold: 0.5 });
 
       videoItems.forEach(item => observer.observe(item));
       window.videoObserver = observer;
+
+      // --- Click on video-item toggles play (manual play) ---
+      videoItems.forEach(item => {
+        item.addEventListener('click', function(e) {
+          // If the click is on the play icon or the item itself, toggle embed
+          const wrapper = this.querySelector('.video-embed-wrapper');
+          const thumb = this.querySelector('.video-thumb');
+          const iframe = wrapper?.querySelector('iframe');
+
+          if (wrapper && wrapper.style.display === 'block') {
+            // Currently showing → hide (stop)
+            wrapper.style.display = 'none';
+            if (thumb) thumb.style.display = 'flex';
+            if (iframe) {
+              const src = iframe.getAttribute('src');
+              if (src) {
+                const cleanSrc = src.replace(/[?&]autoplay=1/g, '').replace(/\?$/, '');
+                iframe.setAttribute('src', cleanSrc);
+              }
+            }
+          } else if (wrapper) {
+            // Currently hidden → show and play
+            wrapper.style.display = 'block';
+            if (thumb) thumb.style.display = 'none';
+            if (iframe) {
+              let src = iframe.getAttribute('src');
+              // ensure no autoplay, but we just show the video — user clicks play button inside iframe
+              if (src && !src.includes('autoplay')) {
+                // Keep as is — user will click play on YouTube player
+              }
+              // Reload to ensure fresh state
+              iframe.setAttribute('src', src);
+            }
+          }
+        });
+      });
     }
 
-    // --- init ---
+    // -------------------------------------------------------------
+    // 6. INIT
+    // -------------------------------------------------------------
     window.addEventListener('DOMContentLoaded', () => {
       renderStaticVideos();
       fetchFirestoreVideos();
       // observer will be set after videos render
-      setTimeout(setupAutoplayObserver, 300);
+      setTimeout(setupVideoObserver, 400);
     });
 
   </script>
@@ -380,7 +433,7 @@
   </div>
 
   <!-- PACKAGES -->
-   <div class="section-header">
+  <div class="section-header">
     <h2><i class="fas fa-cannabis"></i> Premium Aurora</h2>
     <span class="sub">1g = $10</span>
   </div>
