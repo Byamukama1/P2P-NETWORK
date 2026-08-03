@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Login - P2P Network</title>
+
+<style>
+
+body{
+    font-family:Arial,sans-serif;
+    background:#f4f7fb;
+    padding:20px;
+}
+
+
+.container{
+    max-width:450px;
+    margin:auto;
+    background:white;
+    padding:25px;
+    border-radius:15px;
+    box-shadow:0 4px 15px #ccc;
+}
+
+
+h1{
+    text-align:center;
+    color:#1a73e8;
+}
+
+
+label{
+    font-weight:bold;
+    display:block;
+    margin-top:15px;
+}
+
+
+input{
+    width:100%;
+    padding:12px;
+    margin-top:6px;
+    border-radius:8px;
+    border:1px solid #ccc;
+    box-sizing:border-box;
+}
+
+
+.password-box{
+    display:flex;
+    align-items:center;
+}
+
+
+.password-box input{
+    flex:1;
+}
+
+
+.eye{
+    margin-left:-35px;
+    cursor:pointer;
+    font-size:20px;
+}
+
+
+button{
+
+width:100%;
+padding:14px;
+margin-top:20px;
+border:none;
+border-radius:10px;
+background:#1a73e8;
+color:white;
+font-size:16px;
+
+}
+
+
+.register{
+
+background:#28a745;
+
+}
+
+
+.message{
+
+margin-top:15px;
+padding:12px;
+border-radius:8px;
+display:none;
+
+}
+
+
+.error{
+
+background:#f8d7da;
+color:#721c24;
+
+}
+
+
+.success{
+
+background:#d4edda;
+color:#155724;
+
+}
+
+
+</style>
+
+
+</head>
+
+
+<body>
+
+
+
+<div class="container">
+
+
+<h1>
+Login
+</h1>
+
+
+
+<form id="loginForm">
+
+
+<label>
+Email Address
+</label>
+
+
+<input
+id="email"
+type="email"
+placeholder="Enter your email"
+required>
+
+
+
+
+<label>
+Password
+</label>
+
+
+<div class="password-box">
+
+
+<input
+id="password"
+type="password"
+placeholder="Enter password"
+required>
+
+
+<span class="eye" onclick="togglePassword()">
+👁️
+</span>
+
+
+</div>
+
+
+
+
+<button type="submit">
+Login
+</button>
+
+
+
+</form>
+
+
+
+
+<button class="register" onclick="location.href='register.html'">
+
+Create New Account
+
+</button>
+
+
+
+<div id="message" class="message"></div>
+
+
+
+</div>
+
+
+
+
+
+
+<script type="module">
+
+
+
+import { initializeApp }
+
+from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+
+
+
+import {
+
+getAuth,
+
+signInWithEmailAndPassword
+
+}
+
+from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+
+
+
+
+
+const firebaseConfig = {
+
+
+apiKey: "AIzaSyDDY0Kq5Og1eEslvUXo8yQiOVA_PQ3qa5s",
+
+authDomain:"p2p-network-d08c5.firebaseapp.com",
+
+projectId:"p2p-network-d08c5",
+
+storageBucket:"p2p-network-d08c5.firebasestorage.app",
+
+messagingSenderId:"278654560881",
+
+appId:"1:278654560881:web:f7bfb4a06fd5e969cc89d0",
+
+measurementId:"G-DECS8Q4BG"
+
+};
+
+
+
+
+
+const app = initializeApp(firebaseConfig);
+
+
+const auth = getAuth(app);
+
+
+
+
+
+
+window.togglePassword=function(){
+
+
+let password=document.getElementById("password");
+
+
+if(password.type==="password"){
+
+password.type="text";
+
+}
+
+else{
+
+password.type="password";
+
+}
+
+
+}
+
+
+
+
+
+
+
+function showMessage(text,type){
+
+
+let box=document.getElementById("message");
+
+
+box.innerHTML=text;
+
+box.style.display="block";
+
+box.className="message "+type;
+
+
+}
+
+
+
+
+
+
+
+document
+
+.getElementById("loginForm")
+
+.addEventListener("submit",async(e)=>{
+
+
+e.preventDefault();
+
+
+
+
+let email=document.getElementById("email").value;
+
+
+let password=document.getElementById("password").value;
+
+
+
+
+try{
+
+
+await signInWithEmailAndPassword(
+
+auth,
+
+email,
+
+password
+
+);
+
+
+
+showMessage(
+
+"Login successful. Opening dashboard...",
+
+"success"
+
+);
+
+
+
+setTimeout(()=>{
+
+
+window.location.href="dashboard.html";
+
+
+},1500);
+
+
+
+
+
+}
+
+catch(error){
+
+
+showMessage(
+
+"Login failed: "+error.message,
+
+"error"
+
+);
+
+
+}
+
+
+
+});
+
+
+
+
+</script>
+
+
+
+</body>
+
+</html>
