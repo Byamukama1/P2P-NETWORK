@@ -3,13 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-  <title>GreenLeaf Dispensary · Invest in Aurora</title>
-  <!-- Font Awesome Icons -->
+  <title>GreenLeaf · Invest in Aurora</title>
+  <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-  <!-- Firebase SDKs (kept as provided) -->
+  <!-- Firebase SDKs -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js";
+    import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
     const firebaseConfig = {
       apiKey: "AIzaSyDDY0Qk5Og1eEslvUXo8yQiOVA_PQ3qa5s",
       authDomain: "p2p-network-d08c5.firebaseapp.com",
@@ -21,427 +23,351 @@
     };
     const app = initializeApp(firebaseConfig);
     const analytics = getAnalytics(app);
-    console.log("🔥 Firebase initialized", app);
+    const db = getFirestore(app);
+    console.log("🔥 Firebase initialized");
+
+    // --- Fetch videos from Firestore "updates" collection ---
+    async function fetchFirestoreVideos() {
+      const container = document.getElementById('firestore-videos');
+      if (!container) return;
+      try {
+        const querySnapshot = await getDocs(collection(db, "updates"));
+        let html = '';
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          const title = data.title || 'Aurora Update';
+          let link = data.link || '';
+          // extract video ID from various YouTube formats
+          const videoId = extractYouTubeId(link);
+          if (videoId) {
+            html += `
+              <div class="video-item" data-video-id="${videoId}">
+                <div class="video-thumb" style="background-image: url('https://img.youtube.com/vi/${videoId}/hqdefault.jpg');">
+                  <div class="play-icon"><i class="fas fa-play-circle"></i></div>
+                </div>
+                <div class="video-title">${title}</div>
+                <div class="video-embed-wrapper" style="display:none;">
+                  <iframe src="https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0" 
+                          frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+                </div>
+              </div>
+            `;
+          }
+        });
+        if (html) {
+          container.innerHTML = html;
+          // re-run autoplay observer after adding videos
+          if (window.videoObserver) {
+            window.videoObserver.disconnect();
+          }
+          setupAutoplayObserver();
+        } else {
+          container.innerHTML = '<p class="no-videos"><i class="fas fa-video"></i> No updates yet. Check back soon.</p>';
+        }
+      } catch (error) {
+        console.warn("Firestore fetch error:", error);
+        container.innerHTML = '<p class="no-videos"><i class="fas fa-exclamation-circle"></i> Could not load updates.</p>';
+      }
+    }
+
+    function extractYouTubeId(url) {
+      if (!url) return null;
+      const patterns = [
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/|youtube\.com\/shorts\/)([^&\?\/#]+)/,
+        /youtube\.com\/live\/([^&\?\/#]+)/
+      ];
+      for (let pattern of patterns) {
+        const match = url.match(pattern);
+        if (match && match[1]) return match[1];
+      }
+      return null;
+    }
+
+    // --- Static YouTube videos (provided) ---
+    const staticVideoIds = [
+      'IBW34r4JbWA', '00J4SlIUU4A', 'lTRyjP80n_k', 'RNgh1umo1NM',
+      'fUHNFyQe7PI', 'odMBQr_oamk', 'y3iTrTiisAU', 'q2ukQZGN8LQ',
+      'rY5zqsqfBx4', '1v9Tpc_sqZY', 'wpx6iZS-qxU', 'RGcvOgySEIA',
+      'AF-gGGmCvjE', 'GOcU97Asg2I', 'Zs4YXmt4Jn4', 'wi4rJWH8SjU',
+      'kAfUKe-UXwM', 'Y9Q9oxz8S0w', '8a1V3wcsWvo', 'cSX30exGiko',
+      'CnhnXKPizDE'
+    ];
+
+    function renderStaticVideos() {
+      const container = document.getElementById('static-videos');
+      if (!container) return;
+      let html = '';
+      staticVideoIds.forEach(id => {
+        html += `
+          <div class="video-item" data-video-id="${id}">
+            <div class="video-thumb" style="background-image: url('https://img.youtube.com/vi/${id}/hqdefault.jpg');">
+              <div class="play-icon"><i class="fas fa-play-circle"></i></div>
+            </div>
+            <div class="video-title">Aurora Spotlight</div>
+            <div class="video-embed-wrapper" style="display:none;">
+              <iframe src="https://www.youtube.com/embed/${id}?autoplay=1&rel=0" 
+                      frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+            </div>
+          </div>
+        `;
+      });
+      container.innerHTML = html;
+    }
+
+    // --- Intersection Observer for autoplay ---
+    function setupAutoplayObserver() {
+      const videoItems = document.querySelectorAll('.video-item');
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          const item = entry.target;
+          const wrapper = item.querySelector('.video-embed-wrapper');
+          const iframe = wrapper?.querySelector('iframe');
+          if (entry.isIntersecting) {
+            // show embed & autoplay
+            if (wrapper) {
+              wrapper.style.display = 'block';
+              if (iframe) {
+                const src = iframe.getAttribute('src');
+                if (src && !src.includes('autoplay=1')) {
+                  iframe.setAttribute('src', src + '&autoplay=1');
+                }
+              }
+            }
+            // hide thumb
+            const thumb = item.querySelector('.video-thumb');
+            if (thumb) thumb.style.display = 'none';
+          } else {
+            // pause & hide embed, show thumb
+            if (wrapper) {
+              wrapper.style.display = 'none';
+              if (iframe) {
+                const src = iframe.getAttribute('src');
+                if (src) {
+                  // stop video by resetting src
+                  iframe.setAttribute('src', src.replace('&autoplay=1', '').replace('?autoplay=1', ''));
+                }
+              }
+            }
+            const thumb = item.querySelector('.video-thumb');
+            if (thumb) thumb.style.display = 'flex';
+          }
+        });
+      }, { threshold: 0.6 });
+
+      videoItems.forEach(item => observer.observe(item));
+      window.videoObserver = observer;
+    }
+
+    // --- init ---
+    window.addEventListener('DOMContentLoaded', () => {
+      renderStaticVideos();
+      fetchFirestoreVideos();
+      // observer will be set after videos render
+      setTimeout(setupAutoplayObserver, 300);
+    });
+
   </script>
+
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      font-family: 'Segoe UI', Roboto, system-ui, -apple-system, sans-serif;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Roboto, system-ui, sans-serif; }
+    body { background: #f0f6ec; min-height: 100vh; display: flex; justify-content: center; padding: 12px 10px 90px 10px; }
+    .app-wrapper { max-width: 480px; width: 100%; }
 
-    body {
-      background: #f2f7ee;
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      padding: 14px 10px 90px 10px;
-    }
-
-    .app-wrapper {
-      max-width: 480px;
-      width: 100%;
-    }
-
-    /* ----- HEADER with logo & title ----- */
+    /* HEADER */
     .brand-header {
-      background: white;
-      border-radius: 36px 36px 28px 28px;
-      padding: 20px 18px 14px 18px;
-      box-shadow: 0 6px 20px rgba(20, 50, 20, 0.06);
-      margin-bottom: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 8px 4px;
+      background: white; border-radius: 36px 36px 28px 28px; padding: 16px 16px 12px 16px;
+      box-shadow: 0 6px 20px rgba(20,50,20,0.06); margin-bottom: 14px;
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px;
     }
-
-    .logo-title {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .logo-title img {
-      height: 48px;
-      width: auto;
-      border-radius: 30px;
-      background: #eaf3e4;
-      padding: 4px 10px;
-      box-shadow: 0 2px 8px rgba(0,30,0,0.04);
-    }
-
-    .brand-title {
-      font-weight: 700;
-      font-size: 1.25rem;
-      color: #1a3f1a;
-      letter-spacing: -0.3px;
-      line-height: 1.2;
-    }
-    .brand-title small {
-      display: block;
-      font-size: 0.7rem;
-      font-weight: 400;
-      color: #4a754a;
-      letter-spacing: 0.3px;
-    }
-
+    .logo-title { display: flex; align-items: center; gap: 10px; }
+    .logo-title img { height: 44px; width: auto; border-radius: 30px; background: #eaf3e4; padding: 4px 10px; }
+    .brand-title { font-weight: 700; font-size: 1.1rem; color: #1a3f1a; line-height: 1.2; }
+    .brand-title small { display: block; font-size: 0.6rem; font-weight: 400; color: #4a754a; letter-spacing: 0.3px; }
     .location-badge {
-      background: #e1efe0;
-      border-radius: 60px;
-      padding: 6px 14px 6px 10px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 0.75rem;
-      font-weight: 500;
-      color: #1d4a1d;
-      border: 1px solid #c0dbb8;
-      white-space: nowrap;
+      background: #e1efe0; border-radius: 60px; padding: 4px 12px 4px 8px;
+      display: flex; align-items: center; gap: 4px; font-size: 0.7rem; font-weight: 500;
+      color: #1d4a1d; border: 1px solid #c0dbb8; white-space: nowrap;
     }
-    .location-badge i {
-      color: #2b6e2b;
-      font-size: 0.9rem;
-    }
-    .location-badge a {
-      text-decoration: none;
-      color: #1d4a1d;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
+    .location-badge a { text-decoration: none; color: #1d4a1d; display: flex; align-items: center; gap: 4px; }
 
-    /* ----- Horizontal scroll: cannabis lifestyle images ----- */
+    /* HORIZONTAL SCROLL */
     .cannabis-scroll {
-      background: white;
-      border-radius: 28px;
-      padding: 14px 0 10px 0;
-      margin-bottom: 18px;
-      box-shadow: 0 4px 14px rgba(0, 30, 0, 0.03);
-      overflow: hidden;
+      background: white; border-radius: 28px; padding: 10px 0; margin-bottom: 16px;
+      box-shadow: 0 4px 14px rgba(0,30,0,0.03); overflow: hidden;
     }
-
     .scroll-track {
-      display: flex;
-      gap: 14px;
-      overflow-x: auto;
-      padding: 0 18px 8px 18px;
-      scroll-snap-type: x mandatory;
-      -webkit-overflow-scrolling: touch;
-      scrollbar-width: thin;
-      scrollbar-color: #b5d0aa #eaf3e4;
+      display: flex; gap: 12px; overflow-x: auto; padding: 0 16px 6px 16px;
+      scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin; scrollbar-color: #b5d0aa #eaf3e4;
     }
-    .scroll-track::-webkit-scrollbar {
-      height: 4px;
-    }
-    .scroll-track::-webkit-scrollbar-track {
-      background: #eaf3e4;
-      border-radius: 10px;
-    }
-    .scroll-track::-webkit-scrollbar-thumb {
-      background: #b5d0aa;
-      border-radius: 10px;
-    }
-
+    .scroll-track::-webkit-scrollbar { height: 4px; }
+    .scroll-track::-webkit-scrollbar-track { background: #eaf3e4; border-radius: 10px; }
+    .scroll-track::-webkit-scrollbar-thumb { background: #b5d0aa; border-radius: 10px; }
     .scroll-item {
-      flex: 0 0 140px;
-      scroll-snap-align: start;
-      border-radius: 20px;
-      overflow: hidden;
-      background: #deecda;
-      box-shadow: 0 2px 8px rgba(0,20,0,0.04);
-      transition: 0.2s;
+      flex: 0 0 130px; scroll-snap-align: start; border-radius: 18px; overflow: hidden;
+      background: #deecda; height: 90px; display: flex; align-items: center; justify-content: center;
+      background-size: cover; background-position: center; color: white; font-weight: 600;
+      font-size: 0.7rem; text-shadow: 0 1px 8px rgba(0,0,0,0.3); position: relative;
       border: 1px solid #d0e2c8;
-      height: 100px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background-size: cover;
-      background-position: center;
-      color: white;
-      font-weight: 500;
-      font-size: 0.7rem;
-      text-shadow: 0 1px 6px rgba(0,0,0,0.3);
-      position: relative;
     }
     .scroll-item .overlay {
-      background: rgba(20, 40, 10, 0.3);
-      backdrop-filter: blur(2px);
-      padding: 4px 12px;
-      border-radius: 40px;
-      border: 1px solid rgba(255,255,240,0.25);
-      font-size: 0.7rem;
-      font-weight: 600;
-      letter-spacing: 0.3px;
+      background: rgba(20,40,10,0.35); backdrop-filter: blur(2px);
+      padding: 4px 14px; border-radius: 40px; border: 1px solid rgba(255,255,240,0.2);
     }
     .scroll-item:nth-child(1) { background-image: url('https://source.unsplash.com/featured/?cannabis,garden'); }
-    .scroll-item:nth-child(2) { background-image: url('https://source.unsplash.com/featured/?medical,cannabis,patient'); }
-    .scroll-item:nth-child(3) { background-image: url('https://source.unsplash.com/featured/?cannabis,plant,green'); }
+    .scroll-item:nth-child(2) { background-image: url('https://source.unsplash.com/featured/?medical,cannabis'); }
+    .scroll-item:nth-child(3) { background-image: url('https://source.unsplash.com/featured/?cannabis,plant'); }
     .scroll-item:nth-child(4) { background-image: url('https://source.unsplash.com/featured/?cannabis,dispensary'); }
     .scroll-item:nth-child(5) { background-image: url('https://source.unsplash.com/featured/?cannabis,harvest'); }
-    .scroll-item:nth-child(6) { background-image: url('https://source.unsplash.com/featured/?cbd,oil,bottle'); }
-    /* fallback gradient if images fail */
-    .scroll-item {
-      background-color: #b5d0aa;
-      background-blend-mode: overlay;
-    }
+    .scroll-item:nth-child(6) { background-image: url('https://source.unsplash.com/featured/?cbd,oil'); }
+    .scroll-item { background-color: #b5d0aa; background-blend-mode: overlay; }
 
-    /* ----- Section: two-column packages ----- */
+    /* SECTION HEADER */
     .section-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      margin: 16px 0 12px 0;
-      padding: 0 4px;
+      display: flex; justify-content: space-between; align-items: baseline;
+      margin: 12px 0 10px 0; padding: 0 4px;
     }
-    .section-header h2 {
-      font-size: 1.2rem;
-      font-weight: 700;
-      color: #1b3b1b;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .section-header h2 i {
-      color: #3a7a3a;
-      font-size: 1.1rem;
-    }
-    .section-header .sub {
-      font-size: 0.7rem;
-      font-weight: 500;
-      color: #4a754a;
-      background: #e4f0de;
-      padding: 4px 14px;
-      border-radius: 40px;
-    }
+    .section-header h2 { font-size: 1.2rem; font-weight: 700; color: #1b3b1b; display: flex; align-items: center; gap: 6px; }
+    .section-header h2 i { color: #3a7a3a; }
+    .section-header .sub { font-size: 0.7rem; font-weight: 500; color: #4a754a; background: #e4f0de; padding: 4px 14px; border-radius: 40px; }
 
+    /* PACKAGES 2-COLUMN */
     .packages-grid-2col {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-      margin-bottom: 24px;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px;
     }
-
     .package-card {
-      background: white;
-      border-radius: 24px;
-      padding: 14px 12px 14px 12px;
-      box-shadow: 0 4px 12px rgba(0, 30, 0, 0.04);
-      border: 1px solid #e3efe0;
-      transition: 0.15s ease;
-      display: flex;
-      flex-direction: column;
+      background: white; border-radius: 24px; padding: 12px 10px 12px 10px;
+      box-shadow: 0 4px 12px rgba(0,30,0,0.04); border: 1px solid #e3efe0;
+      display: flex; flex-direction: column; transition: 0.15s;
     }
-    .package-card:hover {
-      border-color: #9ac18a;
-      box-shadow: 0 8px 18px rgba(60, 110, 40, 0.07);
-    }
-
+    .package-card:hover { border-color: #9ac18a; box-shadow: 0 8px 18px rgba(60,110,40,0.07); }
     .package-image {
-      width: 100%;
-      aspect-ratio: 1 / 1;
-      background: #deecda;
-      border-radius: 20px;
-      margin-bottom: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background-size: cover;
-      background-position: center;
-      background-repeat: no-repeat;
-      color: #2d5a2d;
-      font-weight: 500;
-      font-size: 0.7rem;
-      position: relative;
-      min-height: 80px;
+      width: 100%; aspect-ratio: 1/1; background: #deecda; border-radius: 18px; margin-bottom: 8px;
+      display: flex; align-items: center; justify-content: center; background-size: cover; background-position: center;
+      color: #2d5a2d; font-weight: 500; font-size: 0.65rem; position: relative; min-height: 70px;
     }
     .package-image .img-badge {
-      background: rgba(20, 40, 10, 0.5);
-      backdrop-filter: blur(4px);
-      padding: 4px 12px;
-      border-radius: 40px;
-      color: white;
-      font-size: 0.65rem;
-      font-weight: 600;
+      background: rgba(20,40,10,0.5); backdrop-filter: blur(4px); padding: 3px 10px;
+      border-radius: 40px; color: white; font-size: 0.6rem; font-weight: 600;
       border: 1px solid rgba(255,255,240,0.2);
     }
-    /* distinct package visuals */
     .package-card:nth-child(1) .package-image { background-image: url('https://source.unsplash.com/featured/?cannabis,bud,jar'); }
-    .package-card:nth-child(2) .package-image { background-image: url('https://source.unsplash.com/featured/?cannabis,flower,jars'); }
-    .package-card:nth-child(3) .package-image { background-image: url('https://source.unsplash.com/featured/?cannabis,leaf,closeup'); }
-    .package-card:nth-child(4) .package-image { background-image: url('https://source.unsplash.com/featured/?cannabis,premium,nugs'); }
+    .package-card:nth-child(2) .package-image { background-image: url('https://source.unsplash.com/featured/?cannabis,flower'); }
+    .package-card:nth-child(3) .package-image { background-image: url('https://source.unsplash.com/featured/?cannabis,leaf'); }
+    .package-card:nth-child(4) .package-image { background-image: url('https://source.unsplash.com/featured/?cannabis,nugs'); }
     .package-card:nth-child(5) .package-image { background-image: url('https://source.unsplash.com/featured/?cbd,oil,dropper'); }
-    .package-card:nth-child(6) .package-image { background-image: url('https://source.unsplash.com/featured/?cannabis,concentrate'); }
-    .package-card:nth-child(7) .package-image { background-image: url('https://source.unsplash.com/featured/?cannabis,edibles'); }
-    .package-card:nth-child(8) .package-image { background-image: url('https://source.unsplash.com/featured/?cannabis,preroll'); }
-    /* fallback */
-    .package-image {
-      background-color: #c6ddbc;
-      background-blend-mode: overlay;
-    }
+    .package-card:nth-child(6) .package-image { background-image: url('https://source.unsplash.com/featured/?cannabis,preroll'); }
+    .package-card:nth-child(7) .package-image { background-image: url('https://source.unsplash.com/featured/?cannabis,wax'); }
+    .package-card:nth-child(8) .package-image { background-image: url('https://source.unsplash.com/featured/?cannabis,edibles'); }
+    .package-image { background-color: #c6ddbc; background-blend-mode: overlay; }
 
-    .package-info {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      margin-bottom: 10px;
-    }
-    .package-name {
-      font-weight: 700;
-      font-size: 1rem;
-      color: #1a3a1a;
-      line-height: 1.2;
-    }
-    .package-meta {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 0.75rem;
-      color: #3b613b;
-    }
-    .package-weight {
-      background: #eaf3e4;
-      padding: 2px 12px;
-      border-radius: 40px;
-      font-weight: 600;
-      font-size: 0.7rem;
-    }
-    .package-price {
-      font-weight: 700;
-      font-size: 1.1rem;
-      color: #1d4a1d;
-      letter-spacing: -0.2px;
-    }
-    .package-price small {
-      font-weight: 400;
-      font-size: 0.65rem;
-      color: #4f774f;
-    }
+    .package-info { display: flex; flex-direction: column; gap: 2px; margin-bottom: 8px; }
+    .package-name { font-weight: 700; font-size: 0.95rem; color: #1a3a1a; line-height: 1.2; }
+    .package-meta { display: flex; justify-content: space-between; align-items: center; font-size: 0.7rem; color: #3b613b; }
+    .package-weight { background: #eaf3e4; padding: 2px 10px; border-radius: 40px; font-weight: 600; font-size: 0.65rem; }
+    .package-price { font-weight: 700; font-size: 1rem; color: #1d4a1d; }
+    .package-price small { font-weight: 400; font-size: 0.6rem; color: #4f774f; }
 
     .invest-btn-small {
-      background: #1f4f1f;
-      border: none;
-      border-radius: 60px;
-      padding: 10px 6px;
-      font-weight: 600;
-      font-size: 0.8rem;
-      color: white;
-      width: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      cursor: pointer;
-      transition: 0.15s;
-      box-shadow: 0 3px 8px rgba(30, 80, 30, 0.1);
-      text-decoration: none;
-      border: 1px solid #2d6a2d;
-      margin-top: 4px;
+      background: #1f4f1f; border: none; border-radius: 60px; padding: 8px 6px;
+      font-weight: 600; font-size: 0.75rem; color: white; width: 100%;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      cursor: pointer; transition: 0.15s; text-decoration: none; border: 1px solid #2d6a2d;
+      box-shadow: 0 3px 8px rgba(30,80,30,0.1); margin-top: 2px;
     }
-    .invest-btn-small i {
-      font-size: 0.8rem;
-    }
-    .invest-btn-small:hover {
-      background: #2d6a2d;
-      transform: scale(1.01);
-    }
-    .invest-btn-small:active {
-      transform: scale(0.96);
-    }
+    .invest-btn-small:hover { background: #2d6a2d; transform: scale(1.01); }
+    .invest-btn-small:active { transform: scale(0.96); }
 
-    /* bottom nav */
+    /* VIDEO GALLERY */
+    .video-section {
+      background: white; border-radius: 28px; padding: 16px 14px 20px 14px;
+      margin: 16px 0 12px 0; box-shadow: 0 4px 14px rgba(0,30,0,0.03);
+    }
+    .video-section h3 {
+      font-size: 1.1rem; font-weight: 700; color: #1b3b1b;
+      display: flex; align-items: center; gap: 8px; margin-bottom: 14px;
+    }
+    .video-section h3 i { color: #3a7a3a; }
+    .video-grid {
+      display: flex; flex-direction: column; gap: 16px;
+    }
+    .video-item {
+      border-radius: 18px; overflow: hidden; background: #f4f9f0;
+      border: 1px solid #dce8d6; transition: 0.2s; cursor: pointer;
+      position: relative;
+    }
+    .video-item:hover { border-color: #9ac18a; }
+    .video-thumb {
+      width: 100%; aspect-ratio: 16/9; background-size: cover; background-position: center;
+      display: flex; align-items: center; justify-content: center;
+      transition: 0.3s; position: relative;
+    }
+    .video-thumb .play-icon {
+      font-size: 3rem; color: rgba(255,255,255,0.9); text-shadow: 0 2px 20px rgba(0,0,0,0.5);
+      transition: 0.2s; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.2));
+    }
+    .video-item:hover .play-icon { transform: scale(1.08); color: #fff; }
+    .video-title {
+      padding: 8px 14px; font-weight: 600; font-size: 0.85rem;
+      color: #1d3a1d; background: white; border-top: 1px solid #eaf3e4;
+    }
+    .video-embed-wrapper {
+      width: 100%; aspect-ratio: 16/9; background: #000;
+    }
+    .video-embed-wrapper iframe {
+      width: 100%; height: 100%; border: none;
+    }
+    .no-videos { padding: 20px; text-align: center; color: #6b8a6b; font-size: 0.9rem; }
+
+    /* BOTTOM NAV */
     .bottom-nav {
-      position: fixed;
-      bottom: 18px;
-      left: 0;
-      right: 0;
-      display: flex;
-      justify-content: center;
-      pointer-events: none;
+      position: fixed; bottom: 18px; left: 0; right: 0;
+      display: flex; justify-content: center; pointer-events: none;
     }
     .nav-inner {
-      background: rgba(255, 255, 255, 0.92);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border-radius: 60px;
-      padding: 8px 10px;
-      display: flex;
-      gap: 4px;
-      box-shadow: 0 8px 30px rgba(0, 20, 0, 0.12);
-      border: 1px solid #dce8d6;
-      pointer-events: auto;
-      max-width: 380px;
-      width: 100%;
-      justify-content: space-around;
+      background: rgba(255,255,255,0.92); backdrop-filter: blur(16px);
+      border-radius: 60px; padding: 8px 10px; display: flex; gap: 4px;
+      box-shadow: 0 8px 30px rgba(0,20,0,0.12); border: 1px solid #dce8d6;
+      pointer-events: auto; max-width: 380px; width: 100%; justify-content: space-around;
     }
     .nav-item {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      text-decoration: none;
-      color: #3d5a3d;
-      font-size: 0.65rem;
-      font-weight: 500;
-      padding: 6px 8px;
-      border-radius: 40px;
-      transition: 0.2s;
-      flex: 1;
-      text-align: center;
-      gap: 2px;
+      display: flex; flex-direction: column; align-items: center; text-decoration: none;
+      color: #3d5a3d; font-size: 0.6rem; font-weight: 500; padding: 6px 8px;
+      border-radius: 40px; transition: 0.2s; flex: 1; text-align: center; gap: 2px;
     }
-    .nav-item i {
-      font-size: 1.2rem;
-      color: #3d6a3d;
-    }
-    .nav-item.active {
-      background: #dcecd4;
-      color: #1b451b;
-    }
-    .nav-item.active i {
-      color: #1f4f1f;
-    }
+    .nav-item i { font-size: 1.2rem; color: #3d6a3d; }
+    .nav-item.active { background: #dcecd4; color: #1b451b; }
+    .nav-item.active i { color: #1f4f1f; }
 
-    .footer-note {
-      margin-top: 6px;
-      text-align: center;
-      font-size: 0.65rem;
-      color: #6b8a6b;
-      padding-bottom: 4px;
-    }
+    .footer-note { margin-top: 8px; text-align: center; font-size: 0.65rem; color: #6b8a6b; padding-bottom: 4px; }
 
     @media (max-width: 420px) {
-      .brand-title { font-size: 1rem; }
-      .location-badge { font-size: 0.65rem; padding: 4px 10px; }
-      .scroll-item { flex: 0 0 110px; height: 80px; }
-      .packages-grid-2col { gap: 12px; }
-      .package-card { padding: 10px 8px; }
+      .brand-title { font-size: 0.95rem; }
+      .location-badge { font-size: 0.6rem; padding: 4px 8px; }
+      .scroll-item { flex: 0 0 110px; height: 75px; }
+      .packages-grid-2col { gap: 10px; }
+      .package-card { padding: 8px 6px; }
     }
   </style>
 </head>
 <body>
 <div class="app-wrapper">
 
-  <!-- HEADER: Logo + INVEST IN AURORA WEED + location -->
+  <!-- HEADER -->
   <header class="brand-header">
     <div class="logo-title">
-      <img src="https://res.cloudinary.com/dp81zzxlh/image/upload/v1785751860/AM-CBD-Drops-Hybrid-Oil-30ml_bottle-syringe_h9g361.png" 
-           alt="AM CBD Drops logo" 
-           style="height:48px; width:auto;">
-      <div class="brand-title">
-        INVEST IN <br><small>AURORA WEED</small>
-      </div>
+      <img src="https://res.cloudinary.com/dp81zzxlh/image/upload/v1785751860/AM-CBD-Drops-Hybrid-Oil-30ml_bottle-syringe_h9g361.png" alt="AM CBD logo">
+      <div class="brand-title">INVEST IN <br><small>AURORA WEED</small></div>
     </div>
     <div class="location-badge">
       <i class="fas fa-map-pin"></i>
       <a href="https://maps.app.goo.gl/mhHXvWG2HuuupVK6A" target="_blank" rel="noopener">
-        123 Green St, CA <i class="fas fa-chevron-right" style="font-size:0.6rem; opacity:0.6;"></i>
+        123 Green St, CA <i class="fas fa-chevron-right" style="font-size:0.5rem; opacity:0.6;"></i>
       </a>
     </div>
   </header>
 
-  <!-- Horizontal scroll: cannabis lifestyle images (garden, medical, dispensary, etc) -->
+  <!-- HORIZONTAL SCROLL -->
   <div class="cannabis-scroll">
     <div class="scroll-track">
       <div class="scroll-item"><span class="overlay"><i class="fas fa-seedling"></i> Garden</span></div>
@@ -453,131 +379,30 @@
     </div>
   </div>
 
-  <!-- Packages section: two columns -->
-  <div class="section-header">
+  <!-- PACKAGES -->
+   <div class="section-header">
     <h2><i class="fas fa-cannabis"></i> Premium Aurora</h2>
     <span class="sub">1g = $10</span>
   </div>
 
   <div class="packages-grid-2col">
-    <!-- 1g -->
-    <div class="package-card">
-      <div class="package-image"><span class="img-badge"><i class="fas fa-cannabis"></i> 1g jar</span></div>
-      <div class="package-info">
-        <span class="package-name">Aurora Indica</span>
-        <div class="package-meta">
-          <span class="package-weight">1 g</span>
-          <span class="package-price">$10 <small>/g</small></span>
-        </div>
-      </div>
-      <a href="invest.html" class="invest-btn-small" data-package="1g" data-price="10">
-        <i class="fas fa-plus-circle"></i> Invest $10
-      </a>
-    </div>
+    <div class="package-card"><div class="package-image"><span class="img-badge"><i class="fas fa-cannabis"></i> 1g jar</span></div><div class="package-info"><span class="package-name">Aurora Indica</span><div class="package-meta"><span class="package-weight">1 g</span><span class="package-price">$10 <small>/g</small></span></div></div><a href="invest.html" class="invest-btn-small" data-package="1g" data-price="10"><i class="fas fa-plus-circle"></i> Invest $10</a></div>
+    <div class="package-card"><div class="package-image"><span class="img-badge"><i class="fas fa-cannabis"></i> 3.5g</span></div><div class="package-info"><span class="package-name">Aurora Sativa</span><div class="package-meta"><span class="package-weight">3.5 g</span><span class="package-price">$35 <small>/8th</small></span></div></div><a href="invest.html" class="invest-btn-small" data-package="3.5g" data-price="35"><i class="fas fa-plus-circle"></i> Invest $35</a></div>
+    <div class="package-card"><div class="package-image"><span class="img-badge"><i class="fas fa-cannabis"></i> 7g pouch</span></div><div class="package-info"><span class="package-name">Aurora Hybrid</span><div class="package-meta"><span class="package-weight">7 g</span><span class="package-price">$70 <small>/quarter</small></span></div></div><a href="invest.html" class="invest-btn-small" data-package="7g" data-price="70"><i class="fas fa-plus-circle"></i> Invest $70</a></div>
+    <div class="package-card"><div class="package-image"><span class="img-badge"><i class="fas fa-cannabis"></i> 14g bag</span></div><div class="package-info"><span class="package-name">Aurora CBD+</span><div class="package-meta"><span class="package-weight">14 g</span><span class="package-price">$140 <small>/half</small></span></div></div><a href="invest.html" class="invest-btn-small" data-package="14g" data-price="140"><i class="fas fa-plus-circle"></i> Invest $140</a></div>
+    <div class="package-card"><div class="package-image"><span class="img-badge"><i class="fas fa-cannabis"></i> 28g ounce</span></div><div class="package-info"><span class="package-name">Aurora Reserve</span><div class="package-meta"><span class="package-weight">28 g</span><span class="package-price">$280 <small>/oz</small></span></div></div><a href="invest.html" class="invest-btn-small" data-package="28g" data-price="280"><i class="fas fa-plus-circle"></i> Invest $280</a></div>
+    <div class="package-card"><div class="package-image"><span class="img-badge"><i class="fas fa-cannabis"></i> 2g preroll</span></div><div class="package-info"><span class="package-name">Aurora Pre-roll</span><div class="package-meta"><span class="package-weight">2 g</span><span class="package-price">$20 <small>/pack</small></span></div></div><a href="invest.html" class="invest-btn-small" data-package="2g" data-price="20"><i class="fas fa-plus-circle"></i> Invest $20</a></div>
+    <div class="package-card"><div class="package-image"><span class="img-badge"><i class="fas fa-cannabis"></i> 5g wax</span></div><div class="package-info"><span class="package-name">Aurora Concentrate</span><div class="package-meta"><span class="package-weight">5 g</span><span class="package-price">$50 <small>/wax</small></span></div></div><a href="invest.html" class="invest-btn-small" data-package="5g" data-price="50"><i class="fas fa-plus-circle"></i> Invest $50</a></div>
+    <div class="package-card"><div class="package-image"><span class="img-badge"><i class="fas fa-cannabis"></i> 10g edibles</span></div><div class="package-info"><span class="package-name">Aurora Edible</span><div class="package-meta"><span class="package-weight">10 g</span><span class="package-price">$100 <small>/bundle</small></span></div></div><a href="invest.html" class="invest-btn-small" data-package="10g" data-price="100"><i class="fas fa-plus-circle"></i> Invest $100</a></div>
+  </div>
 
-    <!-- 3.5g -->
-    <div class="package-card">
-      <div class="package-image"><span class="img-badge"><i class="fas fa-cannabis"></i> 3.5g</span></div>
-      <div class="package-info">
-        <span class="package-name">Aurora Sativa</span>
-        <div class="package-meta">
-          <span class="package-weight">3.5 g</span>
-          <span class="package-price">$35 <small>/8th</small></span>
-        </div>
-      </div>
-      <a href="invest.html" class="invest-btn-small" data-package="3.5g" data-price="35">
-        <i class="fas fa-plus-circle"></i> Invest $35
-      </a>
-    </div>
-
-    <!-- 7g -->
-    <div class="package-card">
-      <div class="package-image"><span class="img-badge"><i class="fas fa-cannabis"></i> 7g pouch</span></div>
-      <div class="package-info">
-        <span class="package-name">Aurora Hybrid</span>
-        <div class="package-meta">
-          <span class="package-weight">7 g</span>
-          <span class="package-price">$70 <small>/quarter</small></span>
-        </div>
-      </div>
-      <a href="invest.html" class="invest-btn-small" data-package="7g" data-price="70">
-        <i class="fas fa-plus-circle"></i> Invest $70
-      </a>
-    </div>
-
-    <!-- 14g -->
-    <div class="package-card">
-      <div class="package-image"><span class="img-badge"><i class="fas fa-cannabis"></i> 14g bag</span></div>
-      <div class="package-info">
-        <span class="package-name">Aurora CBD+</span>
-        <div class="package-meta">
-          <span class="package-weight">14 g</span>
-          <span class="package-price">$140 <small>/half</small></span>
-        </div>
-      </div>
-      <a href="invest.html" class="invest-btn-small" data-package="14g" data-price="140">
-        <i class="fas fa-plus-circle"></i> Invest $140
-      </a>
-    </div>
-
-    <!-- 28g (ounce) -->
-    <div class="package-card">
-      <div class="package-image"><span class="img-badge"><i class="fas fa-cannabis"></i> 28g ounce</span></div>
-      <div class="package-info">
-        <span class="package-name">Aurora Reserve</span>
-        <div class="package-meta">
-          <span class="package-weight">28 g</span>
-          <span class="package-price">$280 <small>/oz</small></span>
-        </div>
-      </div>
-      <a href="invest.html" class="invest-btn-small" data-package="28g" data-price="280">
-        <i class="fas fa-plus-circle"></i> Invest $280
-      </a>
-    </div>
-
-    <!-- 2g pre-roll pack -->
-    <div class="package-card">
-      <div class="package-image"><span class="img-badge"><i class="fas fa-cannabis"></i> 2g preroll</span></div>
-      <div class="package-info">
-        <span class="package-name">Aurora Pre-roll</span>
-        <div class="package-meta">
-          <span class="package-weight">2 g</span>
-          <span class="package-price">$20 <small>/pack</small></span>
-        </div>
-      </div>
-      <a href="invest.html" class="invest-btn-small" data-package="2g" data-price="20">
-        <i class="fas fa-plus-circle"></i> Invest $20
-      </a>
-    </div>
-
-    <!-- 5g concentrate -->
-    <div class="package-card">
-      <div class="package-image"><span class="img-badge"><i class="fas fa-cannabis"></i> 5g wax</span></div>
-      <div class="package-info">
-        <span class="package-name">Aurora Concentrate</span>
-        <div class="package-meta">
-          <span class="package-weight">5 g</span>
-          <span class="package-price">$50 <small>/wax</small></span>
-        </div>
-      </div>
-      <a href="invest.html" class="invest-btn-small" data-package="5g" data-price="50">
-        <i class="fas fa-plus-circle"></i> Invest $50
-      </a>
-    </div>
-
-    <!-- 10g edible bundle -->
-    <div class="package-card">
-      <div class="package-image"><span class="img-badge"><i class="fas fa-cannabis"></i> 10g edibles</span></div>
-      <div class="package-info">
-        <span class="package-name">Aurora Edible</span>
-        <div class="package-meta">
-          <span class="package-weight">10 g</span>
-          <span class="package-price">$100 <small>/bundle</small></span>
-        </div>
-      </div>
-      <a href="invest.html" class="invest-btn-small" data-package="10g" data-price="100">
-        <i class="fas fa-plus-circle"></i> Invest $100
-      </a>
+  <!-- VIDEO GALLERY: KNOW MORE ABOUT AURORA -->
+  <div class="video-section">
+    <h3><i class="fas fa-video"></i> KNOW MORE ABOUT AURORA</h3>
+    <div class="video-grid" id="static-videos"></div>
+    <div style="margin-top: 20px; border-top: 1px solid #eaf3e4; padding-top: 16px;">
+      <h4 style="font-size: 0.9rem; color: #1b3b1b; margin-bottom: 10px;"><i class="fas fa-database"></i> Latest Updates</h4>
+      <div class="video-grid" id="firestore-videos"></div>
     </div>
   </div>
 
@@ -586,7 +411,7 @@
   </div>
 </div>
 
-<!-- BOTTOM NAVIGATION -->
+<!-- BOTTOM NAV -->
 <div class="bottom-nav">
   <div class="nav-inner">
     <a href="index.html" class="nav-item active"><i class="fas fa-home"></i> Home</a>
@@ -598,9 +423,7 @@
 
 <script>
   (function() {
-    console.log('🌿 GreenLeaf · redesigned with two-column packages & scroll');
-
-    // track invest button clicks
+    // track invest clicks
     document.querySelectorAll('.invest-btn-small').forEach(btn => {
       btn.addEventListener('click', function(e) {
         const pkg = this.getAttribute('data-package') || 'unknown';
@@ -609,11 +432,10 @@
       });
     });
 
-    // bottom nav active handling (simple)
-    const navItems = document.querySelectorAll('.nav-item');
-    navItems.forEach(item => {
+    // bottom nav active
+    document.querySelectorAll('.nav-item').forEach(item => {
       item.addEventListener('click', function() {
-        navItems.forEach(n => n.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
         this.classList.add('active');
       });
     });
