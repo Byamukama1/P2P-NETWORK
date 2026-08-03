@@ -1,529 +1,741 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Account · GreenLeaf P2P</title>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-<title>Create Account - P2P Network</title>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDDY0Kq5Og1eEslvUXo8yQiOVA_PQ3qa5s",
+            authDomain: "p2p-network-d08c5.firebaseapp.com",
+            projectId: "p2p-network-d08c5",
+            storageBucket: "p2p-network-d08c5.firebasestorage.app",
+            messagingSenderId: "278654560881",
+            appId: "1:278654560881:web:f7bfb4a06fd5e969cc89d0",
+            measurementId: "G-DECS8Q4BG"
+        };
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
 
-<style>
+        // --- Country list with currencies ---
+        const countries = [
+            { name: "Afghanistan", code: "AF", currency: "AFN" },
+            { name: "Albania", code: "AL", currency: "ALL" },
+            { name: "Algeria", code: "DZ", currency: "DZD" },
+            { name: "Andorra", code: "AD", currency: "EUR" },
+            { name: "Angola", code: "AO", currency: "AOA" },
+            { name: "Argentina", code: "AR", currency: "ARS" },
+            { name: "Armenia", code: "AM", currency: "AMD" },
+            { name: "Australia", code: "AU", currency: "AUD" },
+            { name: "Austria", code: "AT", currency: "EUR" },
+            { name: "Azerbaijan", code: "AZ", currency: "AZN" },
+            { name: "Bahamas", code: "BS", currency: "BSD" },
+            { name: "Bahrain", code: "BH", currency: "BHD" },
+            { name: "Bangladesh", code: "BD", currency: "BDT" },
+            { name: "Barbados", code: "BB", currency: "BBD" },
+            { name: "Belarus", code: "BY", currency: "BYN" },
+            { name: "Belgium", code: "BE", currency: "EUR" },
+            { name: "Belize", code: "BZ", currency: "BZD" },
+            { name: "Benin", code: "BJ", currency: "XOF" },
+            { name: "Bhutan", code: "BT", currency: "BTN" },
+            { name: "Bolivia", code: "BO", currency: "BOB" },
+            { name: "Bosnia and Herzegovina", code: "BA", currency: "BAM" },
+            { name: "Botswana", code: "BW", currency: "BWP" },
+            { name: "Brazil", code: "BR", currency: "BRL" },
+            { name: "Brunei", code: "BN", currency: "BND" },
+            { name: "Bulgaria", code: "BG", currency: "BGN" },
+            { name: "Burkina Faso", code: "BF", currency: "XOF" },
+            { name: "Burundi", code: "BI", currency: "BIF" },
+            { name: "Cambodia", code: "KH", currency: "KHR" },
+            { name: "Cameroon", code: "CM", currency: "XAF" },
+            { name: "Canada", code: "CA", currency: "CAD" },
+            { name: "Cape Verde", code: "CV", currency: "CVE" },
+            { name: "Central African Republic", code: "CF", currency: "XAF" },
+            { name: "Chad", code: "TD", currency: "XAF" },
+            { name: "Chile", code: "CL", currency: "CLP" },
+            { name: "China", code: "CN", currency: "CNY" },
+            { name: "Colombia", code: "CO", currency: "COP" },
+            { name: "Comoros", code: "KM", currency: "KMF" },
+            { name: "Congo", code: "CG", currency: "XAF" },
+            { name: "Costa Rica", code: "CR", currency: "CRC" },
+            { name: "Croatia", code: "HR", currency: "EUR" },
+            { name: "Cuba", code: "CU", currency: "CUP" },
+            { name: "Cyprus", code: "CY", currency: "EUR" },
+            { name: "Czech Republic", code: "CZ", currency: "CZK" },
+            { name: "Denmark", code: "DK", currency: "DKK" },
+            { name: "Djibouti", code: "DJ", currency: "DJF" },
+            { name: "Dominica", code: "DM", currency: "XCD" },
+            { name: "Dominican Republic", code: "DO", currency: "DOP" },
+            { name: "Ecuador", code: "EC", currency: "USD" },
+            { name: "Egypt", code: "EG", currency: "EGP" },
+            { name: "El Salvador", code: "SV", currency: "USD" },
+            { name: "Equatorial Guinea", code: "GQ", currency: "XAF" },
+            { name: "Eritrea", code: "ER", currency: "ERN" },
+            { name: "Estonia", code: "EE", currency: "EUR" },
+            { name: "Eswatini", code: "SZ", currency: "SZL" },
+            { name: "Ethiopia", code: "ET", currency: "ETB" },
+            { name: "Fiji", code: "FJ", currency: "FJD" },
+            { name: "Finland", code: "FI", currency: "EUR" },
+            { name: "France", code: "FR", currency: "EUR" },
+            { name: "Gabon", code: "GA", currency: "XAF" },
+            { name: "Gambia", code: "GM", currency: "GMD" },
+            { name: "Georgia", code: "GE", currency: "GEL" },
+            { name: "Germany", code: "DE", currency: "EUR" },
+            { name: "Ghana", code: "GH", currency: "GHS" },
+            { name: "Greece", code: "GR", currency: "EUR" },
+            { name: "Guatemala", code: "GT", currency: "GTQ" },
+            { name: "Guinea", code: "GN", currency: "GNF" },
+            { name: "Guyana", code: "GY", currency: "GYD" },
+            { name: "Haiti", code: "HT", currency: "HTG" },
+            { name: "Honduras", code: "HN", currency: "HNL" },
+            { name: "Hungary", code: "HU", currency: "HUF" },
+            { name: "Iceland", code: "IS", currency: "ISK" },
+            { name: "India", code: "IN", currency: "INR" },
+            { name: "Indonesia", code: "ID", currency: "IDR" },
+            { name: "Iran", code: "IR", currency: "IRR" },
+            { name: "Iraq", code: "IQ", currency: "IQD" },
+            { name: "Ireland", code: "IE", currency: "EUR" },
+            { name: "Israel", code: "IL", currency: "ILS" },
+            { name: "Italy", code: "IT", currency: "EUR" },
+            { name: "Jamaica", code: "JM", currency: "JMD" },
+            { name: "Japan", code: "JP", currency: "JPY" },
+            { name: "Jordan", code: "JO", currency: "JOD" },
+            { name: "Kazakhstan", code: "KZ", currency: "KZT" },
+            { name: "Kenya", code: "KE", currency: "KES" },
+            { name: "Kuwait", code: "KW", currency: "KWD" },
+            { name: "Kyrgyzstan", code: "KG", currency: "KGS" },
+            { name: "Laos", code: "LA", currency: "LAK" },
+            { name: "Latvia", code: "LV", currency: "EUR" },
+            { name: "Lebanon", code: "LB", currency: "LBP" },
+            { name: "Liberia", code: "LR", currency: "LRD" },
+            { name: "Libya", code: "LY", currency: "LYD" },
+            { name: "Liechtenstein", code: "LI", currency: "CHF" },
+            { name: "Lithuania", code: "LT", currency: "EUR" },
+            { name: "Luxembourg", code: "LU", currency: "EUR" },
+            { name: "Madagascar", code: "MG", currency: "MGA" },
+            { name: "Malawi", code: "MW", currency: "MWK" },
+            { name: "Malaysia", code: "MY", currency: "MYR" },
+            { name: "Maldives", code: "MV", currency: "MVR" },
+            { name: "Mali", code: "ML", currency: "XOF" },
+            { name: "Malta", code: "MT", currency: "EUR" },
+            { name: "Mauritania", code: "MR", currency: "MRU" },
+            { name: "Mauritius", code: "MU", currency: "MUR" },
+            { name: "Mexico", code: "MX", currency: "MXN" },
+            { name: "Moldova", code: "MD", currency: "MDL" },
+            { name: "Monaco", code: "MC", currency: "EUR" },
+            { name: "Mongolia", code: "MN", currency: "MNT" },
+            { name: "Montenegro", code: "ME", currency: "EUR" },
+            { name: "Morocco", code: "MA", currency: "MAD" },
+            { name: "Mozambique", code: "MZ", currency: "MZN" },
+            { name: "Myanmar", code: "MM", currency: "MMK" },
+            { name: "Namibia", code: "NA", currency: "NAD" },
+            { name: "Nepal", code: "NP", currency: "NPR" },
+            { name: "Netherlands", code: "NL", currency: "EUR" },
+            { name: "New Zealand", code: "NZ", currency: "NZD" },
+            { name: "Nicaragua", code: "NI", currency: "NIO" },
+            { name: "Niger", code: "NE", currency: "XOF" },
+            { name: "Nigeria", code: "NG", currency: "NGN" },
+            { name: "North Korea", code: "KP", currency: "KPW" },
+            { name: "North Macedonia", code: "MK", currency: "MKD" },
+            { name: "Norway", code: "NO", currency: "NOK" },
+            { name: "Oman", code: "OM", currency: "OMR" },
+            { name: "Pakistan", code: "PK", currency: "PKR" },
+            { name: "Palestine", code: "PS", currency: "ILS" },
+            { name: "Panama", code: "PA", currency: "PAB" },
+            { name: "Papua New Guinea", code: "PG", currency: "PGK" },
+            { name: "Paraguay", code: "PY", currency: "PYG" },
+            { name: "Peru", code: "PE", currency: "PEN" },
+            { name: "Philippines", code: "PH", currency: "PHP" },
+            { name: "Poland", code: "PL", currency: "PLN" },
+            { name: "Portugal", code: "PT", currency: "EUR" },
+            { name: "Qatar", code: "QA", currency: "QAR" },
+            { name: "Romania", code: "RO", currency: "RON" },
+            { name: "Russia", code: "RU", currency: "RUB" },
+            { name: "Rwanda", code: "RW", currency: "RWF" },
+            { name: "Saint Kitts and Nevis", code: "KN", currency: "XCD" },
+            { name: "Saint Lucia", code: "LC", currency: "XCD" },
+            { name: "Samoa", code: "WS", currency: "WST" },
+            { name: "San Marino", code: "SM", currency: "EUR" },
+            { name: "Sao Tome and Principe", code: "ST", currency: "STN" },
+            { name: "Saudi Arabia", code: "SA", currency: "SAR" },
+            { name: "Senegal", code: "SN", currency: "XOF" },
+            { name: "Serbia", code: "RS", currency: "RSD" },
+            { name: "Seychelles", code: "SC", currency: "SCR" },
+            { name: "Sierra Leone", code: "SL", currency: "SLL" },
+            { name: "Singapore", code: "SG", currency: "SGD" },
+            { name: "Slovakia", code: "SK", currency: "EUR" },
+            { name: "Slovenia", code: "SI", currency: "EUR" },
+            { name: "Somalia", code: "SO", currency: "SOS" },
+            { name: "South Africa", code: "ZA", currency: "ZAR" },
+            { name: "South Korea", code: "KR", currency: "KRW" },
+            { name: "South Sudan", code: "SS", currency: "SSP" },
+            { name: "Spain", code: "ES", currency: "EUR" },
+            { name: "Sri Lanka", code: "LK", currency: "LKR" },
+            { name: "Sudan", code: "SD", currency: "SDG" },
+            { name: "Suriname", code: "SR", currency: "SRD" },
+            { name: "Sweden", code: "SE", currency: "SEK" },
+            { name: "Switzerland", code: "CH", currency: "CHF" },
+            { name: "Syria", code: "SY", currency: "SYP" },
+            { name: "Taiwan", code: "TW", currency: "TWD" },
+            { name: "Tajikistan", code: "TJ", currency: "TJS" },
+            { name: "Tanzania", code: "TZ", currency: "TZS" },
+            { name: "Thailand", code: "TH", currency: "THB" },
+            { name: "Timor-Leste", code: "TL", currency: "USD" },
+            { name: "Togo", code: "TG", currency: "XOF" },
+            { name: "Tonga", code: "TO", currency: "TOP" },
+            { name: "Trinidad and Tobago", code: "TT", currency: "TTD" },
+            { name: "Tunisia", code: "TN", currency: "TND" },
+            { name: "Turkey", code: "TR", currency: "TRY" },
+            { name: "Turkmenistan", code: "TM", currency: "TMT" },
+            { name: "Tuvalu", code: "TV", currency: "AUD" },
+            { name: "Uganda", code: "UG", currency: "UGX" },
+            { name: "Ukraine", code: "UA", currency: "UAH" },
+            { name: "United Arab Emirates", code: "AE", currency: "AED" },
+            { name: "United Kingdom", code: "GB", currency: "GBP" },
+            { name: "United States", code: "US", currency: "USD" },
+            { name: "Uruguay", code: "UY", currency: "UYU" },
+            { name: "Uzbekistan", code: "UZ", currency: "UZS" },
+            { name: "Vanuatu", code: "VU", currency: "VUV" },
+            { name: "Vatican City", code: "VA", currency: "EUR" },
+            { name: "Venezuela", code: "VE", currency: "VES" },
+            { name: "Vietnam", code: "VN", currency: "VND" },
+            { name: "Yemen", code: "YE", currency: "YER" },
+            { name: "Zambia", code: "ZM", currency: "ZMW" },
+            { name: "Zimbabwe", code: "ZW", currency: "ZWL" }
+        ];
 
-body {
-    font-family: Arial, sans-serif;
-    background:#f4f7fb;
-    margin:0;
-    padding:20px;
-}
+        // Populate country dropdown with search
+        const countrySelect = document.getElementById('country');
+        const countrySearch = document.getElementById('countrySearch');
+        let countryOptions = [];
 
-.container {
-    max-width:500px;
-    margin:auto;
-    background:white;
-    padding:25px;
-    border-radius:15px;
-    box-shadow:0 4px 15px #ccc;
-}
+        countries.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.code;
+            opt.textContent = `${c.name} (${c.currency})`;
+            opt.dataset.currency = c.currency;
+            opt.dataset.name = c.name;
+            countrySelect.appendChild(opt);
+            countryOptions.push(opt);
+        });
 
-h1 {
-    text-align:center;
-    color:#1a73e8;
-}
+        // Search filter
+        countrySearch.addEventListener('input', function() {
+            const query = this.value.toLowerCase();
+            countryOptions.forEach(opt => {
+                const text = opt.textContent.toLowerCase();
+                opt.style.display = text.includes(query) ? '' : 'none';
+            });
+        });
 
-label {
-    font-weight:bold;
-    display:block;
-    margin-top:15px;
-}
+        // Auto-set currency when country changes
+        countrySelect.addEventListener('change', function() {
+            const selected = this.options[this.selectedIndex];
+            const currency = selected.dataset.currency || 'USD';
+            document.getElementById('currencyDisplay').textContent = `Currency: ${currency}`;
+        });
 
-input, select {
-    width:100%;
-    padding:12px;
-    margin-top:6px;
-    border-radius:8px;
-    border:1px solid #ccc;
-    box-sizing:border-box;
-}
+        // Toggle password visibility
+        window.togglePassword = function(id) {
+            const input = document.getElementById(id);
+            input.type = input.type === 'password' ? 'text' : 'password';
+        };
 
+        // Register form submit
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
 
-.password-box {
-    display:flex;
-    align-items:center;
-}
+            const username = document.getElementById('username').value;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const wallet = document.getElementById('wallet').value;
+            const network = document.getElementById('network').value;
+            const countryCode = document.getElementById('country').value;
+            const selectedCountry = countrySelect.options[countrySelect.selectedIndex];
+            const countryName = selectedCountry.dataset.name || '';
+            const currency = selectedCountry.dataset.currency || 'USD';
 
-.password-box input {
-    flex:1;
-}
+            if (password !== confirmPassword) {
+                alert('Passwords do not match');
+                return;
+            }
 
+            if (!countryCode) {
+                alert('Please select your country');
+                return;
+            }
 
-.eye {
-    margin-left:-35px;
-    cursor:pointer;
-    font-size:20px;
-}
+            try {
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                const uid = userCredential.user.uid;
 
+                await setDoc(doc(db, 'users', uid), {
+                    username: username,
+                    email: email,
+                    walletAddress: wallet,
+                    network: network,
+                    countryCode: countryCode,
+                    countryName: countryName,
+                    currency: currency,
+                    uninvestedBalance: 0,      // New field: uninvested balance in dollars
+                    investedAmount: 0,         // New field: invested amount in dollars
+                    totalBalance: 0,           // Optional: total = uninvested + invested
+                    createdAt: serverTimestamp()
+                });
 
-button {
-    width:100%;
-    padding:14px;
-    margin-top:20px;
-    border:none;
-    border-radius:10px;
-    background:#1a73e8;
-    color:white;
-    font-size:16px;
-}
+                alert('✅ Account created successfully!');
+                window.location.href = 'login.html';
+            } catch (error) {
+                alert('❌ ' + error.message);
+            }
+        });
+    </script>
 
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+        }
 
-.login {
-    background:#28a745;
-}
+        body {
+            background: #f0f6ec;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            padding: 30px 16px 60px 16px;
+        }
 
+        .container {
+            max-width: 520px;
+            width: 100%;
+            background: white;
+            border-radius: 32px;
+            padding: 30px 24px 40px 24px;
+            box-shadow: 0 12px 40px rgba(20, 50, 20, 0.08);
+            border: 1px solid #e2efe0;
+        }
 
-.warning {
-    background:#fff3cd;
-    padding:15px;
-    border-radius:10px;
-    margin-top:15px;
-    color:#856404;
-}
+        .brand-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid #eaf3e4;
+        }
 
+        .brand-header img {
+            height: 44px;
+            width: auto;
+            border-radius: 30px;
+            background: #eaf3e4;
+            padding: 4px 10px;
+        }
 
-.step {
-    background:#eef5ff;
-    padding:12px;
-    margin-top:10px;
-    border-radius:10px;
-}
+        .brand-header h1 {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #1a3f1a;
+            letter-spacing: -0.3px;
+        }
 
+        .brand-header h1 small {
+            display: block;
+            font-size: 0.65rem;
+            font-weight: 400;
+            color: #4a754a;
+            letter-spacing: 0.3px;
+        }
 
-iframe {
-    width:100%;
-    height:250px;
-    border-radius:12px;
-    margin-top:15px;
-}
+        .step-box {
+            background: #eef6ea;
+            padding: 16px 18px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+            border-left: 4px solid #3a7a3a;
+        }
 
+        .step-box b {
+            color: #1d4a1d;
+            font-size: 0.95rem;
+        }
 
-</style>
+        .step-box p {
+            color: #2d5a2d;
+            font-size: 0.85rem;
+            margin-top: 4px;
+            line-height: 1.5;
+        }
 
+        label {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: #1d3a1d;
+            display: block;
+            margin-top: 16px;
+            margin-bottom: 4px;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 12px 14px;
+            border-radius: 12px;
+            border: 1.5px solid #dce8d6;
+            background: #fafcfa;
+            font-size: 0.95rem;
+            transition: 0.2s;
+            box-sizing: border-box;
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: #3a7a3a;
+            box-shadow: 0 0 0 3px rgba(58, 122, 58, 0.12);
+        }
+
+        .password-box {
+            display: flex;
+            align-items: center;
+            position: relative;
+        }
+
+        .password-box input {
+            padding-right: 48px;
+        }
+
+        .eye {
+            position: absolute;
+            right: 16px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            color: #5a7a5a;
+            user-select: none;
+        }
+
+        .eye:hover {
+            color: #1d4a1d;
+        }
+
+        .search-box {
+            position: relative;
+        }
+
+        .search-box input {
+            padding-left: 40px;
+        }
+
+        .search-box i {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6b8a6b;
+        }
+
+        .currency-hint {
+            font-size: 0.75rem;
+            color: #4a754a;
+            margin-top: 4px;
+            font-weight: 500;
+        }
+
+        .warning-box {
+            background: #fff8e7;
+            border: 1px solid #f0dcaa;
+            border-radius: 14px;
+            padding: 16px 18px;
+            margin: 18px 0 22px 0;
+            font-size: 0.8rem;
+            color: #7a6a2a;
+            line-height: 1.6;
+        }
+
+        .warning-box i {
+            color: #c9a84a;
+            margin-right: 6px;
+        }
+
+        .warning-box b {
+            color: #5a4a1a;
+        }
+
+        .btn-primary {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 60px;
+            background: #1f4f1f;
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+            box-shadow: 0 4px 12px rgba(30, 80, 30, 0.15);
+            margin-top: 6px;
+        }
+
+        .btn-primary:hover {
+            background: #2d6a2d;
+            transform: scale(1.01);
+        }
+
+        .btn-primary:active {
+            transform: scale(0.97);
+        }
+
+        .btn-secondary {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid #1f4f1f;
+            border-radius: 60px;
+            background: transparent;
+            color: #1f4f1f;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-top: 12px;
+            text-align: center;
+            text-decoration: none;
+            display: block;
+        }
+
+        .btn-secondary:hover {
+            background: #eef6ea;
+        }
+
+        .video-section {
+            margin-top: 28px;
+            padding-top: 20px;
+            border-top: 2px solid #eaf3e4;
+        }
+
+        .video-section h2 {
+            font-size: 1.1rem;
+            color: #1a3f1a;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .video-section h2 i {
+            color: #3a7a3a;
+        }
+
+        .video-section .sub {
+            color: #4a754a;
+            font-size: 0.85rem;
+            margin-bottom: 16px;
+        }
+
+        .video-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .video-card {
+            background: #f4f9f0;
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid #dce8d6;
+        }
+
+        .video-card iframe {
+            width: 100%;
+            aspect-ratio: 16/9;
+            border: none;
+        }
+
+        .video-card .video-label {
+            padding: 8px 14px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            color: #1d3a1d;
+            background: white;
+            border-top: 1px solid #eaf3e4;
+        }
+
+        .action-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 16px 0 10px 0;
+        }
+
+        .action-links a {
+            flex: 1;
+            min-width: 140px;
+            padding: 10px 16px;
+            border-radius: 60px;
+            text-align: center;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .action-links .btn-binance {
+            background: #f0b90b;
+            color: #1a1a1a;
+            border: 1px solid #e0a90a;
+        }
+
+        .action-links .btn-binance:hover {
+            background: #f5c920;
+            transform: scale(1.02);
+        }
+
+        .action-links .btn-playstore {
+            background: #1a1a1a;
+            color: white;
+            border: 1px solid #333;
+        }
+
+        .action-links .btn-playstore:hover {
+            background: #333;
+            transform: scale(1.02);
+        }
+
+        @media (max-width: 460px) {
+            .container {
+                padding: 20px 16px 30px 16px;
+            }
+            .brand-header h1 {
+                font-size: 1.1rem;
+            }
+            .action-links a {
+                min-width: 100px;
+                font-size: 0.75rem;
+                padding: 8px 12px;
+            }
+        }
+    </style>
 </head>
-
-
 <body>
 
+    <div class="container">
+
+        <!-- Brand Header -->
+        <div class="brand-header">
+            <img src="https://res.cloudinary.com/dp81zzxlh/image/upload/v1785751860/AM-CBD-Drops-Hybrid-Oil-30ml_bottle-syringe_h9g361.png" alt="AM CBD logo">
+            <h1>Create Account <small>GreenLeaf P2P Network</small></h1>
+        </div>
+
+        <!-- Step 1 -->
+        <div class="step-box">
+            <b>📋 Step 1:</b> Create your account
+            <p>Your wallet address will be used for USDT withdrawals. Fill the form below carefully.</p>
+        </div>
+
+        <!-- Registration Form -->
+        <form id="registerForm">
+
+            <label>Username (Account Name)</label>
+            <input id="username" required placeholder="e.g. GreenLeaf_John" autocomplete="username">
+
+            <label>Email Address</label>
+            <input id="email" type="email" required placeholder="you@gmail.com" autocomplete="email">
+
+            <label>Password</label>
+            <div class="password-box">
+                <input id="password" type="password" required placeholder="Create a strong password" autocomplete="new-password">
+                <span class="eye" onclick="togglePassword('password')">👁️</span>
+            </div>
+
+            <label>Confirm Password</label>
+            <div class="password-box">
+                <input id="confirmPassword" type="password" required placeholder="Confirm your password" autocomplete="new-password">
+                <span class="eye" onclick="togglePassword('confirmPassword')">👁️</span>
+            </div>
+
+            <label>Your USDT Wallet Address</label>
+            <input id="wallet" required placeholder="Paste USDT address from Binance or wallet app" autocomplete="off">
+
+            <label>Select USDT Network</label>
+            <select id="network" required>
+                <option value="">Choose network</option>
+                <option value="TRC20">USDT TRC20 (TRON Network)</option>
+                <option value="BEP20">USDT BEP20 (BNB Smart Chain)</option>
+                <option value="ERC20">USDT ERC20 (Ethereum Network)</option>
+            </select>
+
+            <label>Select Your Country</label>
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input id="countrySearch" type="text" placeholder="Search country..." autocomplete="off">
+            </div>
+            <select id="country" required style="margin-top: 6px;">
+                <option value="">-- Select country --</option>
+            </select>
+            <div class="currency-hint" id="currencyDisplay">Currency: USD</div>
+
+            <!-- Security Warning -->
+            <div class="warning-box">
+                <i class="fas fa-shield-alt"></i> <b>Important Security Guide</b><br><br>
+                1. Open Binance or your wallet app.<br>
+                2. Select USDT → Receive/Deposit.<br>
+                3. Copy your wallet address.<br>
+                4. Paste it here. Do not type manually.<br>
+                5. Select the <b>exact same network</b>.<br><br>
+                ⚠️ Wrong network selection can <b>permanently lose</b> your USDT.
+            </div>
+
+            <button type="submit" class="btn-primary">
+                <i class="fas fa-user-plus"></i> Register Now
+            </button>
+        </form>
+
+        <a href="login.html" class="btn-secondary">
+            <i class="fas fa-sign-in-alt"></i> Already have an account? Login
+        </a>
+
+        <!-- Action Links: Binance & Playstore -->
+        <div class="action-links">
+            <a href="https://www.binance.com/en/register" target="_blank" class="btn-binance">
+                <i class="fab fa-binance"></i> Register on Binance
+            </a>
+            <a href="https://play.google.com/store/apps/details?id=com.binance.dev" target="_blank" class="btn-playstore">
+                <i class="fab fa-google-play"></i> Download Binance App
+            </a>
+        </div>
+
+        <!-- Video Guides -->
+        <div class="video-section">
+            <h2><i class="fas fa-video"></i> Wallet Setup Guides</h2>
+            <p class="sub">Watch these guides while completing registration</p>
+
+            <div class="video-grid">
+                <div class="video-card">
+                    <iframe src="https://www.youtube.com/embed/RQDDR3bzz-4" allowfullscreen></iframe>
+                    <div class="video-label">📘 How to create Binance account</div>
+                </div>
+                <div class="video-card">
+                    <iframe src="https://www.youtube.com/embed/Fm29nBzaqxU" allowfullscreen></iframe>
+                    <div class="video-label">📘 How to copy USDT TRC20 address from Binance</div>
+                </div>
+            </div>
+        </div>
 
-<div class="container">
-
-
-<h1>Create Account</h1>
-
-
-<div class="step">
-<b>Step 1:</b> Create your account.
-<br>
-Your wallet address will be receiving your USDT withdrawals automatically 
-<br>
-FILL THE FORM BELOW 
-</div>
-
-
-
-<form id="registerForm">
-
-
-<label>Username (Account Name)</label>
-
-<input 
-id="username"
-required
-placeholder=" your user name">
-
-
-
-<label>Email Address</label>
-
-<input 
-id="email"
-type="email"
-required
-placeholder="you@gmail.com">
-
-
-
-<label>Password</label>
-
-<div class="password-box">
-
-<input 
-id="password"
-type="password"
-required
-placeholder="Create password">
-
-<span class="eye" onclick="togglePassword('password')">
-👁️
-</span>
-
-</div>
-
-
-
-
-<label>Confirm Password</label>
-
-<div class="password-box">
-
-<input 
-id="confirmPassword"
-type="password"
-required
-placeholder="Confirm password">
-
-<span class="eye" onclick="togglePassword('confirmPassword')">
-👁️
-</span>
-
-</div>
-
-
-
-
-
-<label>Your USDT Wallet Address</label>
-
-<input 
-id="wallet"
-required
-placeholder="Paste wallet address from Binance or wallet app">
-
-
-
-
-
-<label>Select USDT Network</label>
-
-
-<select id="network" required>
-
-<option value="">
-Choose network
-</option>
-
-
-<option value="TRC20">
-USDT TRC20 (TRON Network)
-</option>
-
-
-<option value="BEP20">
-USDT BEP20 (BNB Smart Chain)
-</option>
-
-
-</select>
-
-
-
-
-
-<div class="warning">
-
-⚠️ Important Security Guide
-
-<br><br>
-
-1. Open Binance or your wallet app.
-
-<br><br>
-
-2. Select USDT → Receive/Deposit.
-
-<br><br>
-
-3. Copy your wallet address.
-
-<br><br>
-
-4. Paste it here. Do not type manually.
-
-<br><br>
-
-5. Select the same network.
-
-<br><br>
-
-TRC20 address must use TRC20.
-
-<br>
-
-BEP20 address must use BNB Smart Chain.
-
-<br><br>
-
-Wrong network selection can permanently lose USDT.
-
-</div>
-
-
-
-
-<button type="submit">
-Create Account
-</button>
-
-
-
-</form>
-
-
-
-
-
-<button class="login" onclick="location.href='login.html'">
-
-Already have an account? Login
-
-</button>
-
-
-
-
-
-
-<h2>Wallet Setup Guides</h2>
-
-
-<div class="step">
-
-Watch the guides below while completing registration.
-
-</div>
-
-
-
-
-<h3>
-1. How to create Binance account
-</h3>
-
-
-<iframe
-src="https://www.youtube.com/embed/RQDDR3bzz-4">
-</iframe>
-
-
-
-
-
-<h3>
-2. How to copy USDT TRC20 wallet address from Binance
-</h3>
-
-
-<iframe
-src="https://www.youtube.com/embed/Fm29nBzaqxU">
-</iframe>
-
-
-
-
-
-</div>
-
-
-
-
-
-
-<script type="module">
-
-
-import { initializeApp } 
-from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-
-
-import { 
-getAuth,
-createUserWithEmailAndPassword
-} 
-from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-
-
-
-import {
-getFirestore,
-doc,
-setDoc,
-serverTimestamp
-}
-from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
-
-
-
-
-const firebaseConfig = {
-
-apiKey: "AIzaSyDDY0Kq5Og1eEslvUXo8yQiOVA_PQ3qa5s",
-
-authDomain:"p2p-network-d08c5.firebaseapp.com",
-
-projectId:"p2p-network-d08c5",
-
-storageBucket:"p2p-network-d08c5.firebasestorage.app",
-
-messagingSenderId:"278654560881",
-
-appId:"1:278654560881:web:f7bfb4a06fd5e969cc89d0",
-
-measurementId:"G-DECS8Q4BG"
-
-};
-
-
-
-
-const app = initializeApp(firebaseConfig);
-
-const auth = getAuth(app);
-
-const db = getFirestore(app);
-
-
-
-
-
-
-window.togglePassword=function(id){
-
-let input=document.getElementById(id);
-
-
-if(input.type==="password"){
-
-input.type="text";
-
-}else{
-
-input.type="password";
-
-}
-
-}
-
-
-
-
-
-document
-.getElementById("registerForm")
-.addEventListener("submit", async(e)=>{
-
-
-e.preventDefault();
-
-
-
-let username=
-document.getElementById("username").value;
-
-
-let email=
-document.getElementById("email").value;
-
-
-let password=
-document.getElementById("password").value;
-
-
-let confirmPassword=
-document.getElementById("confirmPassword").value;
-
-
-let wallet=
-document.getElementById("wallet").value;
-
-
-let network=
-document.getElementById("network").value;
-
-
-
-
-if(password !== confirmPassword){
-
-alert("Passwords do not match");
-
-return;
-
-}
-
-
-
-
-
-try{
-
-
-const userCredential=
-await createUserWithEmailAndPassword(
-auth,
-email,
-password
-);
-
-
-
-const uid=userCredential.user.uid;
-
-
-
-
-
-await setDoc(
-doc(db,"users",uid),
-{
-
-
-username:username,
-
-email:email,
-
-walletAddress:wallet,
-
-network:network,
-
-createdAt:serverTimestamp()
-
-
-});
-
-
-
-
-
-alert("Account created successfully!");
-
-window.location.href="login.html";
-
-
-
-}catch(error){
-
-alert(error.message);
-
-}
-
-
-
-});
-
-
-
-</script>
-
-
+    </div>
 
 </body>
-
 </html>
