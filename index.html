@@ -9,7 +9,7 @@
   <!-- Firebase SDKs -->
   <script type="module">
     // -------------------------------------------------------------
-    // 1. FIREBASE INIT & AUTH CHECK
+    // 1. FIREBASE INIT with CORRECT credentials
     // -------------------------------------------------------------
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js";
@@ -30,21 +30,42 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
+    console.log("✅ Firebase initialized with correct credentials");
+
     // -------------------------------------------------------------
     // 2. AUTH GUARD: redirect to login if not authenticated
     // -------------------------------------------------------------
     onAuthStateChanged(auth, (user) => {
       if (!user) {
-        // Not logged in → redirect to login.html
         window.location.href = "login.html";
         return;
       }
-      // User is logged in → show the page (already visible)
       console.log("✅ User logged in:", user.email);
     });
 
     // -------------------------------------------------------------
-    // 3. FETCH FIRESTORE VIDEOS (from "updates" collection)
+    // 3. AUTOMATIC SLIDESHOW
+    // -------------------------------------------------------------
+    let slideIndex = 0;
+    const slides = document.querySelectorAll('.slide-item');
+
+    function showSlides() {
+      slides.forEach((slide, index) => {
+        slide.style.display = index === slideIndex ? 'block' : 'none';
+      });
+      slideIndex = (slideIndex + 1) % slides.length;
+    }
+
+    // Start slideshow after page loads
+    window.addEventListener('DOMContentLoaded', () => {
+      if (slides.length > 0) {
+        showSlides();
+        setInterval(showSlides, 4000);
+      }
+    });
+
+    // -------------------------------------------------------------
+    // 4. FETCH FIRESTORE VIDEOS
     // -------------------------------------------------------------
     async function fetchFirestoreVideos() {
       const container = document.getElementById('firestore-videos');
@@ -74,7 +95,6 @@
         });
         if (html) {
           container.innerHTML = html;
-          // re-run observer after adding videos
           if (window.videoObserver) {
             window.videoObserver.disconnect();
           }
@@ -102,7 +122,7 @@
     }
 
     // -------------------------------------------------------------
-    // 4. STATIC VIDEOS (provided list) — NO AUTOPLAY
+    // 5. STATIC VIDEOS (no autoplay)
     // -------------------------------------------------------------
     const staticVideoIds = [
       'IBW34r4JbWA', '00J4SlIUU4A', 'lTRyjP80n_k', 'RNgh1umo1NM',
@@ -135,9 +155,7 @@
     }
 
     // -------------------------------------------------------------
-    // 5. VIDEO OBSERVER (play/pause on scroll) — NO AUTOPLAY
-    //    We use click-to-play instead of autoplay.
-    //    Observer now only shows/hides embed, but does NOT autoplay.
+    // 6. VIDEO OBSERVER (show/hide, manual click to play)
     // -------------------------------------------------------------
     function setupVideoObserver() {
       const videoItems = document.querySelectorAll('.video-item');
@@ -149,18 +167,14 @@
           const thumb = item.querySelector('.video-thumb');
 
           if (entry.isIntersecting) {
-            // Show embed, hide thumb (but DO NOT autoplay)
             if (wrapper) wrapper.style.display = 'block';
             if (thumb) thumb.style.display = 'none';
           } else {
-            // Hide embed, show thumb
             if (wrapper) wrapper.style.display = 'none';
             if (thumb) thumb.style.display = 'flex';
-            // Pause video by resetting src (no autoplay param)
             if (iframe) {
               const src = iframe.getAttribute('src');
               if (src) {
-                // Remove any autoplay param if present
                 const cleanSrc = src.replace(/[?&]autoplay=1/g, '').replace(/\?$/, '');
                 iframe.setAttribute('src', cleanSrc);
               }
@@ -172,16 +186,14 @@
       videoItems.forEach(item => observer.observe(item));
       window.videoObserver = observer;
 
-      // --- Click on video-item toggles play (manual play) ---
+      // Click to toggle play
       videoItems.forEach(item => {
         item.addEventListener('click', function(e) {
-          // If the click is on the play icon or the item itself, toggle embed
           const wrapper = this.querySelector('.video-embed-wrapper');
           const thumb = this.querySelector('.video-thumb');
           const iframe = wrapper?.querySelector('iframe');
 
           if (wrapper && wrapper.style.display === 'block') {
-            // Currently showing → hide (stop)
             wrapper.style.display = 'none';
             if (thumb) thumb.style.display = 'flex';
             if (iframe) {
@@ -192,16 +204,10 @@
               }
             }
           } else if (wrapper) {
-            // Currently hidden → show and play
             wrapper.style.display = 'block';
             if (thumb) thumb.style.display = 'none';
             if (iframe) {
               let src = iframe.getAttribute('src');
-              // ensure no autoplay, but we just show the video — user clicks play button inside iframe
-              if (src && !src.includes('autoplay')) {
-                // Keep as is — user will click play on YouTube player
-              }
-              // Reload to ensure fresh state
               iframe.setAttribute('src', src);
             }
           }
@@ -210,12 +216,11 @@
     }
 
     // -------------------------------------------------------------
-    // 6. INIT
+    // 7. INIT
     // -------------------------------------------------------------
     window.addEventListener('DOMContentLoaded', () => {
       renderStaticVideos();
       fetchFirestoreVideos();
-      // observer will be set after videos render
       setTimeout(setupVideoObserver, 400);
     });
 
@@ -243,37 +248,64 @@
     }
     .location-badge a { text-decoration: none; color: #1d4a1d; display: flex; align-items: center; gap: 4px; }
 
-    /* HORIZONTAL SCROLL */
-    .cannabis-scroll {
+    /* SLIDESHOW */
+    .slideshow-container {
       background: white; border-radius: 28px; padding: 10px 0; margin-bottom: 16px;
       box-shadow: 0 4px 14px rgba(0,30,0,0.03); overflow: hidden;
+      position: relative;
     }
-    .scroll-track {
-      display: flex; gap: 12px; overflow-x: auto; padding: 0 16px 6px 16px;
-      scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;
-      scrollbar-width: thin; scrollbar-color: #b5d0aa #eaf3e4;
+    .slide-item {
+      display: none;
+      width: 100%;
+      aspect-ratio: 16/9;
+      background-size: cover;
+      background-position: center;
+      border-radius: 18px;
+      padding: 0 12px;
     }
-    .scroll-track::-webkit-scrollbar { height: 4px; }
-    .scroll-track::-webkit-scrollbar-track { background: #eaf3e4; border-radius: 10px; }
-    .scroll-track::-webkit-scrollbar-thumb { background: #b5d0aa; border-radius: 10px; }
-    .scroll-item {
-      flex: 0 0 130px; scroll-snap-align: start; border-radius: 18px; overflow: hidden;
-      background: #deecda; height: 90px; display: flex; align-items: center; justify-content: center;
-      background-size: cover; background-position: center; color: white; font-weight: 600;
-      font-size: 0.7rem; text-shadow: 0 1px 8px rgba(0,0,0,0.3); position: relative;
-      border: 1px solid #d0e2c8;
+    .slide-item.active { display: block; }
+    .slide-item .slide-overlay {
+      background: linear-gradient(to top, rgba(0,0,0,0.6), transparent);
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: flex-end;
+      padding: 20px;
+      border-radius: 18px;
+      color: white;
+      font-weight: 700;
+      font-size: 1.2rem;
+      text-shadow: 0 2px 12px rgba(0,0,0,0.5);
     }
-    .scroll-item .overlay {
-      background: rgba(20,40,10,0.35); backdrop-filter: blur(2px);
-      padding: 4px 14px; border-radius: 40px; border: 1px solid rgba(255,255,240,0.2);
+    .slide-item .slide-overlay small {
+      display: block;
+      font-weight: 400;
+      font-size: 0.8rem;
+      opacity: 0.9;
     }
-    .scroll-item:nth-child(1) { background-image: url('https://source.unsplash.com/featured/?cannabis,garden'); }
-    .scroll-item:nth-child(2) { background-image: url('https://source.unsplash.com/featured/?medical,cannabis'); }
-    .scroll-item:nth-child(3) { background-image: url('https://source.unsplash.com/featured/?cannabis,plant'); }
-    .scroll-item:nth-child(4) { background-image: url('https://source.unsplash.com/featured/?cannabis,dispensary'); }
-    .scroll-item:nth-child(5) { background-image: url('https://source.unsplash.com/featured/?cannabis,harvest'); }
-    .scroll-item:nth-child(6) { background-image: url('https://source.unsplash.com/featured/?cbd,oil'); }
-    .scroll-item { background-color: #b5d0aa; background-blend-mode: overlay; }
+    /* Slide images - cannabis categories */
+    .slide-item:nth-child(1) { background-image: url('https://images.unsplash.com/photo-1603144706822-33f4a5724016?w=800&h=450&fit=crop'); }
+    .slide-item:nth-child(2) { background-image: url('https://images.unsplash.com/photo-1536935338788-846bb9981813?w=800&h=450&fit=crop'); }
+    .slide-item:nth-child(3) { background-image: url('https://images.unsplash.com/photo-1585938389618-b3ee0cfe66c0?w=800&h=450&fit=crop'); }
+    .slide-item:nth-child(4) { background-image: url('https://images.unsplash.com/photo-1628448208225-7afbd7e85404?w=800&h=450&fit=crop'); }
+    .slide-item:nth-child(5) { background-image: url('https://images.unsplash.com/photo-1604513460260-3a3a8b16453b?w=800&h=450&fit=crop'); }
+    .slide-item:nth-child(6) { background-image: url('https://images.unsplash.com/photo-1603144707935-6f2e157d3405?w=800&h=450&fit=crop'); }
+    .slide-item { background-color: #b5d0aa; background-blend-mode: overlay; }
+
+    .slide-dots {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      padding: 8px 0 4px 0;
+    }
+    .slide-dots .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #c6dbbc;
+      transition: 0.3s;
+    }
+    .slide-dots .dot.active { background: #3a7a3a; width: 20px; border-radius: 4px; }
 
     /* SECTION HEADER */
     .section-header {
@@ -284,7 +316,7 @@
     .section-header h2 i { color: #3a7a3a; }
     .section-header .sub { font-size: 0.7rem; font-weight: 500; color: #4a754a; background: #e4f0de; padding: 4px 14px; border-radius: 40px; }
 
-    /* PACKAGES 2-COLUMN */
+    /* PACKAGES 2-COLUMN with colorful images */
     .packages-grid-2col {
       display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px;
     }
@@ -293,25 +325,26 @@
       box-shadow: 0 4px 12px rgba(0,30,0,0.04); border: 1px solid #e3efe0;
       display: flex; flex-direction: column; transition: 0.15s;
     }
-    .package-card:hover { border-color: #9ac18a; box-shadow: 0 8px 18px rgba(60,110,40,0.07); }
+    .package-card:hover { border-color: #9ac18a; box-shadow: 0 8px 18px rgba(60,110,40,0.07); transform: translateY(-2px); }
     .package-image {
-      width: 100%; aspect-ratio: 1/1; background: #deecda; border-radius: 18px; margin-bottom: 8px;
+      width: 100%; aspect-ratio: 1/1; border-radius: 18px; margin-bottom: 8px;
       display: flex; align-items: center; justify-content: center; background-size: cover; background-position: center;
-      color: #2d5a2d; font-weight: 500; font-size: 0.65rem; position: relative; min-height: 70px;
+      color: white; font-weight: 600; font-size: 0.7rem; position: relative; min-height: 70px;
     }
     .package-image .img-badge {
-      background: rgba(20,40,10,0.5); backdrop-filter: blur(4px); padding: 3px 10px;
+      background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); padding: 4px 12px;
       border-radius: 40px; color: white; font-size: 0.6rem; font-weight: 600;
       border: 1px solid rgba(255,255,240,0.2);
     }
-    .package-card:nth-child(1) .package-image { background-image: url('https://source.unsplash.com/featured/?cannabis,bud,jar'); }
-    .package-card:nth-child(2) .package-image { background-image: url('https://source.unsplash.com/featured/?cannabis,flower'); }
-    .package-card:nth-child(3) .package-image { background-image: url('https://source.unsplash.com/featured/?cannabis,leaf'); }
-    .package-card:nth-child(4) .package-image { background-image: url('https://source.unsplash.com/featured/?cannabis,nugs'); }
-    .package-card:nth-child(5) .package-image { background-image: url('https://source.unsplash.com/featured/?cbd,oil,dropper'); }
-    .package-card:nth-child(6) .package-image { background-image: url('https://source.unsplash.com/featured/?cannabis,preroll'); }
-    .package-card:nth-child(7) .package-image { background-image: url('https://source.unsplash.com/featured/?cannabis,wax'); }
-    .package-card:nth-child(8) .package-image { background-image: url('https://source.unsplash.com/featured/?cannabis,edibles'); }
+    /* Premium cannabis package images */
+    .package-card:nth-child(1) .package-image { background-image: url('https://images.unsplash.com/photo-1603144707935-6f2e157d3405?w=400&h=400&fit=crop'); }
+    .package-card:nth-child(2) .package-image { background-image: url('https://images.unsplash.com/photo-1604513460260-3a3a8b16453b?w=400&h=400&fit=crop'); }
+    .package-card:nth-child(3) .package-image { background-image: url('https://images.unsplash.com/photo-1536935338788-846bb9981813?w=400&h=400&fit=crop'); }
+    .package-card:nth-child(4) .package-image { background-image: url('https://images.unsplash.com/photo-1585938389618-b3ee0cfe66c0?w=400&h=400&fit=crop'); }
+    .package-card:nth-child(5) .package-image { background-image: url('https://images.unsplash.com/photo-1628448208225-7afbd7e85404?w=400&h=400&fit=crop'); }
+    .package-card:nth-child(6) .package-image { background-image: url('https://images.unsplash.com/photo-1603144706822-33f4a5724016?w=400&h=400&fit=crop'); }
+    .package-card:nth-child(7) .package-image { background-image: url('https://images.unsplash.com/photo-1585938389618-b3ee0cfe66c0?w=400&h=400&fit=crop'); }
+    .package-card:nth-child(8) .package-image { background-image: url('https://images.unsplash.com/photo-1536935338788-846bb9981813?w=400&h=400&fit=crop'); }
     .package-image { background-color: #c6ddbc; background-blend-mode: overlay; }
 
     .package-info { display: flex; flex-direction: column; gap: 2px; margin-bottom: 8px; }
@@ -397,9 +430,9 @@
     @media (max-width: 420px) {
       .brand-title { font-size: 0.95rem; }
       .location-badge { font-size: 0.6rem; padding: 4px 8px; }
-      .scroll-item { flex: 0 0 110px; height: 75px; }
       .packages-grid-2col { gap: 10px; }
       .package-card { padding: 8px 6px; }
+      .slide-item .slide-overlay { font-size: 1rem; padding: 14px; }
     }
   </style>
 </head>
@@ -420,15 +453,33 @@
     </div>
   </header>
 
-  <!-- HORIZONTAL SCROLL -->
-  <div class="cannabis-scroll">
-    <div class="scroll-track">
-      <div class="scroll-item"><span class="overlay"><i class="fas fa-seedling"></i> Garden</span></div>
-      <div class="scroll-item"><span class="overlay"><i class="fas fa-heartbeat"></i> Medical</span></div>
-      <div class="scroll-item"><span class="overlay"><i class="fas fa-leaf"></i> Cultivation</span></div>
-      <div class="scroll-item"><span class="overlay"><i class="fas fa-store"></i> Dispensary</span></div>
-      <div class="scroll-item"><span class="overlay"><i class="fas fa-hand-holding-heart"></i> Care</span></div>
-      <div class="scroll-item"><span class="overlay"><i class="fas fa-flask"></i> CBD Oil</span></div>
+  <!-- AUTOMATIC SLIDESHOW -->
+  <div class="slideshow-container">
+    <div class="slide-item active">
+      <div class="slide-overlay">🌿 Premium Cannabis <small>Top-quality strains for investors</small></div>
+    </div>
+    <div class="slide-item">
+      <div class="slide-overlay">💎 Aurora Reserve <small>28g premium ounces available</small></div>
+    </div>
+    <div class="slide-item">
+      <div class="slide-overlay">🌱 Organic Cultivation <small>Sustainably grown in California</small></div>
+    </div>
+    <div class="slide-item">
+      <div class="slide-overlay">🏥 Medical Grade <small>Certified for medical use</small></div>
+    </div>
+    <div class="slide-item">
+      <div class="slide-overlay">💰 High-Yield Investment <small>1g = $10 starting price</small></div>
+    </div>
+    <div class="slide-item">
+      <div class="slide-overlay">🌎 Global Shipping <small>Available worldwide</small></div>
+    </div>
+    <div class="slide-dots">
+      <span class="dot active"></span>
+      <span class="dot"></span>
+      <span class="dot"></span>
+      <span class="dot"></span>
+      <span class="dot"></span>
+      <span class="dot"></span>
     </div>
   </div>
 
@@ -449,7 +500,7 @@
     <div class="package-card"><div class="package-image"><span class="img-badge"><i class="fas fa-cannabis"></i> 10g edibles</span></div><div class="package-info"><span class="package-name">Aurora Edible</span><div class="package-meta"><span class="package-weight">10 g</span><span class="package-price">$100 <small>/bundle</small></span></div></div><a href="invest.html" class="invest-btn-small" data-package="10g" data-price="100"><i class="fas fa-plus-circle"></i> Invest $100</a></div>
   </div>
 
-  <!-- VIDEO GALLERY: KNOW MORE ABOUT AURORA -->
+  <!-- VIDEO GALLERY -->
   <div class="video-section">
     <h3><i class="fas fa-video"></i> KNOW MORE ABOUT AURORA</h3>
     <div class="video-grid" id="static-videos"></div>
@@ -476,7 +527,7 @@
 
 <script>
   (function() {
-    // track invest clicks
+    // Track invest clicks
     document.querySelectorAll('.invest-btn-small').forEach(btn => {
       btn.addEventListener('click', function(e) {
         const pkg = this.getAttribute('data-package') || 'unknown';
@@ -485,13 +536,40 @@
       });
     });
 
-    // bottom nav active
+    // Bottom nav active
     document.querySelectorAll('.nav-item').forEach(item => {
       item.addEventListener('click', function() {
         document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
         this.classList.add('active');
       });
     });
+
+    // Slideshow dot indicators
+    const slides = document.querySelectorAll('.slide-item');
+    const dots = document.querySelectorAll('.dot');
+    let currentSlide = 0;
+
+    function updateDots(index) {
+      dots.forEach((dot, i) => {
+        dot.classList.toggle('active', i === index);
+      });
+    }
+
+    // Override showSlides to update dots
+    const originalShowSlides = window.showSlides;
+    window.showSlides = function() {
+      slides.forEach((slide, index) => {
+        slide.style.display = index === currentSlide ? 'block' : 'none';
+      });
+      updateDots(currentSlide);
+      currentSlide = (currentSlide + 1) % slides.length;
+    };
+
+    // Initialize
+    if (slides.length > 0) {
+      window.showSlides();
+      setInterval(window.showSlides, 4000);
+    }
   })();
 </script>
 
